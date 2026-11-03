@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RB RailVigie — Contrôle des Intervalles, Repos, Week-ends & Heures</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
+  <meta name="theme-color" content="#0f172a">
+  <!-- Librairies jsPDF & AutoTable pour l'export PDF de traçabilité -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+<div class="container">
+  <!-- En-tête -->
+  <header class="header-bar">
+    <div>
+      <h1>RB RailVigie — Audit des Intervalles, Repos, Week-ends & Compteurs</h1>
+      <p class="subtitle">
+        Contrôle réglementaire CP 226 (Repos 14h / Anomalie &le;12h / Rattrapage / Hôtel 9h / RX 38h vs OO / Week-ends / Heures Sup.)
+      </p>
+    </div>
+    <div class="btn-group">
+      <button class="btn-amber" onclick="loadOctoberDemo()">Charger Exemple Octobre 2026</button>
+      <button class="btn-outline" onclick="resetBlankMonth()">Mois Vierge</button>
+      <label class="file-label btn-outline">
+        Importer Synchro JSON
+        <input type="file" id="jsonImportInput" accept=".json" style="display:none" onchange="importSyncJSON(event)">
+      </label>
+      <button class="btn-outline" onclick="exportSyncJSON()">Exporter Synchro JSON</button>
+      <button class="btn-green" onclick="generateAuditPDF()">Exporter PDF (Traçabilité)</button>
+    </div>
+  </header>
+
+  <!-- Bandeau supérieur : 3 cartes de configuration -->
+  <section class="grid-top">
+    <!-- 1. Identification & Trimestre -->
+    <div class="card">
+      <h2>1. Conducteur & Période</h2>
+      <div class="form-row">
+        <div class="field">
+          <label>Nom du conducteur (vierge par défaut)</label>
+          <input type="text" id="driverInput" placeholder="Ex: Rémy Brasseur" oninput="checkDriverMatch()">
+          <div id="driverMatchInfo" class="match-status">Champ vierge pour partage aux collègues.</div>
+        </div>
+        <div class="field">
+          <label>Nom sur fiche E500</label>
+          <input type="text" id="e500FullName" placeholder="Ex: BRASSEUR RÉMY MARCEL L" oninput="checkDriverMatch()">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Matricule</label>
+          <input type="text" id="driverMatricule" placeholder="Ex: 899008349">
+        </div>
+        <div class="field">
+          <label>Mois</label>
+          <select id="monthSelect" onchange="rebuildMonthChange()">
+            <option value="1">01 - Janvier</option>
+            <option value="2">02 - Février</option>
+            <option value="3">03 - Mars</option>
+            <option value="4">04 - Avril</option>
+            <option value="5">05 - Mai</option>
+            <option value="6">06 - Juin</option>
+            <option value="7">07 - Juillet</option>
+            <option value="8">08 - Août</option>
+            <option value="9">09 - Septembre</option>
+            <option value="10" selected>10 - Octobre</option>
+            <option value="11">11 - Novembre</option>
+            <option value="12">12 - Décembre</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Année</label>
+          <input type="number" id="yearInput" value="2026" onchange="rebuildMonthChange()">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Cumul Heures Trimestre (Mois M-1 & M-2)</label>
+          <input type="number" step="0.25" id="prevQuarterHours" value="0" oninput="recalculateAll()">
+        </div>
+        <div class="field">
+          <label>Semaines sur le trimestre (ex: 13)</label>
+          <input type="number" id="quarterWeeks" value="13" oninput="recalculateAll()">
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Réception Dépassement Temps Réel (Lien avec RB RailSynthèse) -->
+    <div class="card">
+      <h2>2. Simuler / Recevoir un Dépassement de Prestation</h2>
+      <p class="card-desc">
+        Vérifie immédiatement si une fin de service retardée réduit l'intervalle suivant (&le; 12h00 anormal, rattrapage à reporter, perte des 38h d'un RX ou dépassement &gt;10h / &gt;46h).
+      </p>
+      <div class="form-row">
+        <div class="field">
+          <label>Jour du mois</label>
+          <input type="number" id="rtDay" min="1" max="31" value="14">
+        </div>
+        <div class="field">
+          <label>Nouvelle heure de fin</label>
+          <input type="text" id="rtNewEnd" placeholder="Ex: 04:15">
+        </div>
+        <div class="field">
+          <label>Origine / Train (Traçabilité)</label>
+          <input type="text" id="rtReason" placeholder="Ex: Retard train 48120">
+        </div>
+      </div>
+      <button class="btn-red full-width" onclick="applyRealtimeOverrun()">
+        Tester / Appliquer le dépassement sur les intervalles et repos
+      </button>
+      <div id="rtQuickFeedback" class="feedback-box"></div>
+    </div>
+
+    <!-- 3. Compteurs E500 (Droite du planning) -->
+    <div class="card">
+      <h2>3. Compteurs de Droite (Congés, Repos, Maladie, Récup)</h2>
+      <div class="counters-grid">
+        <div class="field"><label>RX (Repos)</label><input type="number" id="cnt_RX" value="118" oninput="recalculateAll()"></div>
+        <div class="field"><label>NMBS</label><input type="number" id="cnt_NMBS" value="0" oninput="recalculateAll()"></div>
+        <div class="field"><label>REC (h)</label><input type="number" step="0.1" id="cnt_REC" value="27.2" oninput="recalculateAll()"></div>
+        <div class="field"><label>WKD</label><input type="number" id="cnt_WKD" value="2" oninput="recalculateAll()"></div>
+        <div class="field"><label>ZZ (Mal.)</label><input type="number" id="cnt_ZZ" value="0" oninput="recalculateAll()"></div>
+        <div class="field"><label>ZB (45+)</label><input type="number" id="cnt_ZB" value="10" oninput="recalculateAll()"></div>
+        <div class="field"><label>BLH</label><input type="number" id="cnt_BLH" value="0" oninput="recalculateAll()"></div>
+        <div class="field"><label>BELH</label><input type="number" step="0.5" id="cnt_BELH" value="6.5" oninput="recalculateAll()"></div>
+        <div class="field"><label>BTH</label><input type="number" id="cnt_BTH" value="0" oninput="recalculateAll()"></div>
+        <div class="field"><label>BTULH</label><input type="number" id="cnt_BTULH" value="0" oninput="recalculateAll()"></div>
+      </div>
+      <div id="counterSummaryBox" class="counter-summary"></div>
+    </div>
+  </section>
+
+  <!-- Indicateurs Clés (KPIs sans primes financières) -->
+  <section class="card">
+    <h2>4. Tableau de Bord — Intervalles, Repos, Week-ends & Heures Supplémentaires</h2>
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="label">Heures Prestées (Mois)</div>
+        <div class="val" id="kpiTotalHours">0h00</div>
+        <div class="sub" id="kpiServiceCount">0 prestations BVTS</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Week-end (Samedi / Dimanche)</div>
+        <div class="val" id="kpiWeekendHours">0h00 / 0h00</div>
+        <div class="sub" id="kpiWeekendSub">Règle du jour de début</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Heures Sup. Jour / Semaine</div>
+        <div class="val" id="kpiOvertimeDayWeek">0h00 / 0h00</div>
+        <div class="sub">Seuils : &gt;10h/jour • &gt;46h/sem</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Heures Sup. Trimestrielles</div>
+        <div class="val" id="kpiOvertimeQuarter">0h00</div>
+        <div class="sub" id="kpiQuarterSub">Moyenne &gt;38h/semaine</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Repos RX & Alternements OO</div>
+        <div class="val" id="kpiRxOoCount">0 RX / 0 OO</div>
+        <div class="sub">RX &ge; 38h (62h double) • OO si &lt; 38h</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Découchers (Hôtel &ge; 9h)</div>
+        <div class="val" id="kpiHotelCount">0 découcher</div>
+        <div class="sub">Saute le rattrapage du 14h</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Repos Réduits (&lt;14h / &le;12h)</div>
+        <div class="val" id="kpiReducedRest">0 réduit / 0 &le;12h</div>
+        <div class="sub">Max 1/sem • Anormal si &le;12h00</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Statut de Conformité</div>
+        <div class="val" id="kpiAnomalies" style="color:var(--green);">Conforme</div>
+        <div class="sub" id="kpiRestSub">0 anomalie détectée</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Journaux d'Audit et de Traçabilité -->
+  <section class="grid-top">
+    <div class="card">
+      <h2>5. Contrôle des Intervalles, Repos 14h (&le;12h), Rattrapages & RX (38h) vs OO</h2>
+      <div class="log-list" id="restAuditList"></div>
+    </div>
+    <div class="card">
+      <h2>6. Traçabilité des Heures Supplémentaires (Jour / Semaine / Trimestre) & Week-ends</h2>
+      <div class="log-list" id="traceabilityList"></div>
+    </div>
+  </section>
+
+  <!-- Grille Mensuelle Interactive -->
+  <section class="card">
+    <h2>7. Planning Mensuel E500</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Jour</th>
+            <th>Code</th>
+            <th>Début</th>
+            <th>Fin</th>
+            <th>Découcher (Lit)</th>
+            <th>2e Presta (Lit 2)</th>
+            <th>Trajet Hôtel (min)</th>
+            <th>Fin PrévueInitiale</th>
+            <th>Origine / Train / Note</th>
+            <th>Durée Service</th>
+            <th>Qualification</th>
+            <th>Intervalle / Repos Avant</th>
+            <th>Diagnostic Réglementaire</th>
+          </tr>
+        </thead>
+        <tbody id="scheduleBody"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
