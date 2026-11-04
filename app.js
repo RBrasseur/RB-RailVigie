@@ -1,5 +1,5 @@
-// RB RailVigie — Moteur de contrôle des intervalles, repos, week-ends, compteurs et heures supplémentaires
-// Connectable à RB RailSynthèse (JSON & BroadcastChannel)
+// RB RailVigie — Application autonome de contrôle des intervalles, repos, week-ends, compteurs et heures supplémentaires
+// Sans calcul de primes ni connexion externe (version de vérification complète + PWA plein écran)
 
 let scheduleData = [];
 let lastComputedReport = null;
@@ -7,21 +7,14 @@ let lastComputedReport = null;
 const DAY_NAMES = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 const CODES = ['BVTS', 'RX', 'OO', 'ELH', 'REC', 'WKD', 'ZZ', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH', 'NMBS', '-'];
 
-// Canal temps réel inter-onglets avec RB RailSynthèse
-const syncChannel = ('BroadcastChannel' in window) ? new BroadcastChannel('rb_rail_sync_channel') : null;
-if (syncChannel) {
-  syncChannel.onmessage = (event) => {
-    if (event.data && event.data.type === 'REALTIME_OVERRUN') {
-      const { day, newEnd, reason } = event.data.payload;
-      document.getElementById('rtDay').value = day;
-      document.getElementById('rtNewEnd').value = newEnd;
-      document.getElementById('rtReason').value = reason || 'Synchro directe RB RailSynthèse';
-      applyRealtimeOverrun();
-    }
-  };
+// Enregistrement du Service Worker pour activer le mode plein écran (sans barre d'adresse) sur Chrome Android
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
 }
 
-// Normalisation pour la reconnaissance souple du nom ("Rémy Brasseur" <-> "BRASSEUR RÉMY MARCEL L")
+// Normalisation pour la reconnaissance souple du nom ("Rémy Brasseur" <-> "Rémy Marcel L BRASSEUR")
 function normalizeStr(str) {
   return (str || '')
     .normalize('NFD')
@@ -32,29 +25,44 @@ function normalizeStr(str) {
 }
 
 function checkDriverMatch() {
-  const query = normalizeStr(document.getElementById('driverInput').value);
-  const target = normalizeStr(document.getElementById('e500FullName').value);
+  const rawInput = document.getElementById('driverInput').value;
+  const rawTarget = document.getElementById('e500FullName').value;
+  const query = normalizeStr(rawInput);
+  const target = normalizeStr(rawTarget);
   const infoEl = document.getElementById('driverMatchInfo');
 
   if (!query) {
-    infoEl.textContent = 'Champ vierge par défaut (prêt à être partagé aux collègues).';
+    infoEl.textContent = 'Case vierge par défaut (prête pour partage aux collègues).';
     infoEl.style.color = 'var(--muted)';
     return true;
   }
-  if (!target) {
-    infoEl.textContent = `Conducteur actif : ${document.getElementById('driverInput').value}`;
+
+  // Reconnaissance explicite "Rémy Brasseur" -> "Rémy Marcel L BRASSEUR"
+  const isRemyShort = (query === 'REMY BRASSEUR' || query === 'BRASSEUR REMY');
+  if (isRemyShort && (!target || (target.includes('REMY') && target.includes('BRASSEUR')))) {
+    if (!rawTarget) {
+      document.getElementById('e500FullName').value = 'Rémy Marcel L BRASSEUR';
+    }
+    infoEl.textContent = 'Identité reconnue : "Rémy Brasseur" ➔ "Rémy Marcel L BRASSEUR".';
     infoEl.style.color = 'var(--green)';
     return true;
   }
+
+  if (!target) {
+    infoEl.textContent = `Conducteur actif : ${rawInput}`;
+    infoEl.style.color = 'var(--green)';
+    return true;
+  }
+
   const queryTokens = query.split(/\s+/).filter(Boolean);
   const targetTokens = target.split(/\s+/).filter(Boolean);
   const allMatched = queryTokens.every(qt => targetTokens.some(tt => tt.includes(qt) || qt.includes(tt)));
 
   if (allMatched) {
-    infoEl.textContent = `Identité reconnue : "${document.getElementById('driverInput').value}" ➔ "${document.getElementById('e500FullName').value}".`;
+    infoEl.textContent = `Identité reconnue : "${rawInput}" correspond à "${document.getElementById('e500FullName').value}".`;
     infoEl.style.color = 'var(--green)';
   } else {
-    infoEl.textContent = `Attention : "${document.getElementById('driverInput').value}" ne correspond pas à "${document.getElementById('e500FullName').value}".`;
+    infoEl.textContent = `Attention : "${rawInput}" ne correspond pas à "${document.getElementById('e500FullName').value}".`;
     infoEl.style.color = 'var(--red)';
   }
   return allMatched;
@@ -146,11 +154,11 @@ function rebuildMonthChange() {
   recalculateAll();
 }
 
-// Exemple basé sur le planning d'Octobre 2026
+// Exemple de démonstration (Octobre 2026) — laisse la case "Nom du conducteur" vierge par défaut
 function loadOctoberDemo() {
   document.getElementById('monthSelect').value = '10';
   document.getElementById('yearInput').value = '2026';
-  document.getElementById('e500FullName').value = 'BRASSEUR RÉMY MARCEL L';
+  document.getElementById('e500FullName').value = 'Rémy Marcel L BRASSEUR';
   document.getElementById('driverMatricule').value = '899008349';
   checkDriverMatch();
 
@@ -382,8 +390,8 @@ function recalculateAll() {
         traceabilityEvents.push({
           type: 'WEEKEND',
           day: r.day,
-          label: `Jour ${r.day} (Sam) : Prestation Samedi (${formatMinToHHMM(dayWorkMin)})`,
-          detail: `Début le samedi à ${r.start} (fin ${r.end}) ➔ 100 % comptabilisé en Samedi.`
+          label: `Jour ${r.day} (Sam) : Heures Samedi (${formatMinToHHMM(dayWorkMin)})`,
+          detail: `Prestation débutée le samedi à ${r.start} (fin ${r.end}) ➔ 100 % comptabilisé en Samedi.`
         });
       } else if (dow === 0) {
         totalSunMin += dayWorkMin;
@@ -391,8 +399,8 @@ function recalculateAll() {
         traceabilityEvents.push({
           type: 'WEEKEND',
           day: r.day,
-          label: `Jour ${r.day} (Dim) : Prestation Dimanche (${formatMinToHHMM(dayWorkMin)})`,
-          detail: `Début le dimanche à ${r.start} (fin ${r.end}) ➔ 100 % comptabilisé en Dimanche.`
+          label: `Jour ${r.day} (Dim) : Heures Dimanche (${formatMinToHHMM(dayWorkMin)})`,
+          detail: `Prestation débutée le dimanche à ${r.start} (fin ${r.end}) ➔ 100 % comptabilisé en Dimanche.`
         });
       } else if (dow === 5 && endMin < startMin) {
         qualBadge = `<span class="badge b-ok">Ven➔Sam (100% Sem)</span>`;
@@ -410,8 +418,8 @@ function recalculateAll() {
           traceabilityEvents.push({
             type: 'OVERRUN',
             day: r.day,
-            label: `Jour ${r.day} : Prolongation de service (+${diffEnd} min)`,
-            detail: `Fin prévue ${r.plannedEndBeforeRT} ➔ Fin effective ${r.end}. Origine : ${r.note || 'Non précisée'}.`
+            label: `Jour ${r.day} : Dépassement de prestation (+${diffEnd} min)`,
+            detail: `Fin prévue ${r.plannedEndBeforeRT} ➔ Fin réelle ${r.end}. Origine : ${r.note || 'Non précisée'}.`
           });
         }
       }
@@ -425,7 +433,7 @@ function recalculateAll() {
           type: 'OT_DAY',
           day: r.day,
           label: `Jour ${r.day} : Heures Sup. Journalières (+${formatMinToHHMM(otDay)})`,
-          detail: `Durée totale ${formatMinToHHMM(dayWorkMin)} (> 10h00) sur le service ${r.start}-${r.end}. Origine : ${r.note || 'Service long / dépassement'}.`
+          detail: `Durée totale ${formatMinToHHMM(dayWorkMin)} (> 10h00) sur le service ${r.start}-${r.end}. Origine : ${r.note || 'Prestation > 10h'}.`
         });
       }
     } else if (r.code === 'RX') {
@@ -715,11 +723,11 @@ function recalculateAll() {
   };
 }
 
-// Application d'un dépassement en temps réel et diagnostic d'impact immédiat
-function applyRealtimeOverrun() {
+// Test local d'un dépassement de prestation sur les intervalles et repos
+function applyServiceOverrun() {
   const day = parseInt(document.getElementById('rtDay').value, 10);
   const newEnd = document.getElementById('rtNewEnd').value.trim();
-  const reason = document.getElementById('rtReason').value.trim() || 'Dépassement Temps Réel (Synchro)';
+  const reason = document.getElementById('rtReason').value.trim() || 'Dépassement de prestation';
   const feedbackEl = document.getElementById('rtQuickFeedback');
 
   const row = scheduleData.find(r => r.day === day);
@@ -728,7 +736,7 @@ function applyRealtimeOverrun() {
     return;
   }
   if (parseTimeToMin(newEnd) === null) {
-    feedbackEl.innerHTML = `<span style="color:var(--red);">Format d'heure invalide. Utilisez HH:MM (ex: 04:15).</span>`;
+    feedbackEl.innerHTML = `<span style="color:var(--red);">Format d'heure invalide. Utilisez HH:MM (ex: 03:30).</span>`;
     return;
   }
 
@@ -749,64 +757,6 @@ function applyRealtimeOverrun() {
   } else {
     feedbackEl.innerHTML = `<span style="color:var(--green);">Dépassement appliqué au Jour ${day} (fin à ${newEnd}). Les intervalles suivants restent conformes.</span>`;
   }
-}
-
-// Export / Import JSON pour synchronisation avec RB RailSynthèse
-function exportSyncJSON() {
-  recalculateAll();
-  const payload = {
-    app: 'RB-RailVigie',
-    exportedAt: new Date().toISOString(),
-    driverInput: document.getElementById('driverInput').value,
-    e500FullName: document.getElementById('e500FullName').value,
-    matricule: document.getElementById('driverMatricule').value,
-    month: parseInt(document.getElementById('monthSelect').value, 10),
-    year: parseInt(document.getElementById('yearInput').value, 10),
-    prevQuarterHours: parseFloat(document.getElementById('prevQuarterHours').value || '0'),
-    quarterWeeks: parseInt(document.getElementById('quarterWeeks').value || '13', 10),
-    scheduleData,
-    summary: lastComputedReport
-  };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  const mStr = String(payload.month).padStart(2, '0');
-  a.href = URL.createObjectURL(blob);
-  a.download = `Synchro_RB_RailVigie_${payload.year}_${mStr}.json`;
-  a.click();
-}
-
-function importSyncJSON(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const data = JSON.parse(e.target.result);
-      if (data.month) document.getElementById('monthSelect').value = String(data.month);
-      if (data.year) document.getElementById('yearInput').value = String(data.year);
-      if (data.driverInput !== undefined) document.getElementById('driverInput').value = data.driverInput;
-      if (data.e500FullName !== undefined) document.getElementById('e500FullName').value = data.e500FullName;
-      if (data.matricule !== undefined) document.getElementById('driverMatricule').value = data.matricule;
-      if (data.prevQuarterHours !== undefined) document.getElementById('prevQuarterHours').value = data.prevQuarterHours;
-      if (Array.isArray(data.scheduleData)) scheduleData = data.scheduleData;
-
-      if (data.realtimeOverrun) {
-        const { day, newEnd, reason } = data.realtimeOverrun;
-        const targetRow = scheduleData.find(r => r.day === day);
-        if (targetRow) {
-          if (!targetRow.plannedEndBeforeRT) targetRow.plannedEndBeforeRT = targetRow.end;
-          targetRow.end = newEnd;
-          targetRow.note = reason || 'Synchro RB RailSynthèse';
-        }
-      }
-      checkDriverMatch();
-      renderTable();
-      recalculateAll();
-    } catch (err) {
-      alert('Fichier JSON invalide : ' + err.message);
-    }
-  };
-  reader.readAsText(file);
 }
 
 // Génération du PDF de traçabilité (Intervalles, Repos, Week-ends, Heures Sup.)
