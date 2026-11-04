@@ -1,5 +1,5 @@
-// Service Worker minimal pour valider l'installation PWA plein écran (WebAPK) sur Chrome Android
-const CACHE_NAME = 'rb-railvigie-v1';
+// Service Worker pour l'installation PWA plein écran sur Chrome Android
+const CACHE_NAME = 'rb-railvigie-v3';
 const ASSETS = ['./', './index.html', './styles.css', './app.js', './manifest.json'];
 
 self.addEventListener('install', (event) => {

@@ -2,11 +2,11 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>RB RailVigie — Contrôle Intervalles, Repos, Week-ends & Heures</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>RB RailVigie — Contrôle Intervalles, Repos, Week-ends &amp; Heures</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="icon" type="image/png" sizes="192x192" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAACYUlEQVR42u3boREAIRAEQTwCSQ4ETZbo/yygtq7FBAC1La+NuT6pas0nCAAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAKkogLO79CwABAAAAgAAAQCAAABAAAAgAAAQAAAIAAAEAAACAAABAIAAAEAAACAAABAAbwA4yqgdAEYAAAACAAABAIAAAEAAACAAABAAAAgAAAQAAAIAAAEAgAAAQAAAIAAAEAA1ATgKyT5IAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwQgAAEAAACAAABAAAAgAAAQCAAABAAAAgAAAQAAAIAAAEAAACAAABAIAAAEAAACAAABAAAAgAAAQAAAIAAAEAgAAAQAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAgBAEAAACAAABAAAAgAAAQAAAIAAAEAgAAAQAAAIAAAEAAACAAABAAAAgAAAQCAAABAAAAgAAAQAAAIAAAEAAACAAABAIAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAALceoOwAMAIAABAAAAgAAAQAAAIAAAEAgAAAQAAAIAAAEAAACAAABAAAAgAAAQCAAMgEIAEgASABIAEgASABIAEgASABIAEgASABIAEgAAAQAAAIgPsApOQAEAASABIAEgASABIAEgASABIAEgASABIAEgASAFJoPyO9cIeOpWfZAAAAAElFTkSuQmCC">
-  <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAACYUlEQVR42u3boREAIRAEQTwCSQ4ETZbo/yygtq7FBAC1La+NuT6pas0nCAAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAKkogLO79CwABAAAAgAAAQCAAABAAAAgAAAQAAAIAAAEAAACAAABAIAAAEAAACAAABAAbwA4yqgdAEYAAAACAAABAIAAAEAAACAAABAAAAgAAAQAAAIAAAEAgAAAQAAAIAAAEAA1ATgKyT5IAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwQgAAEAAACAAABAAAAgAAAQCAAABAAAAgAAAQAAAIAAAEAAACAAABAIAAAEAAACAAABAAAAgAAAQAAAIAAAEAgAAAQAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAgBAEAAACAAABAAAAgAAAQAAAIAAAEAgAAAQAAAIAAAEAAACAAABAAAAgAAAQCAAABAAAAgAAAQAAAIAAAEAAACAAABAIAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAALceoOwAMAIAABAAAAgAAAQAAAIAAAEAgAAAQAAAIAAAEAAACAAABAAAAgAAAQCAAMgEIAEgASABIAEgASABIAEgASABIAEgASABIAEgAAAQAAAIgPsApOQAEAASABIAEgASABIAEgASABIAEgASABIAEgASAFJoPyO9cIeOpWfZAAAAAElFTkSuQmCC">
+  <link rel="icon" type="image/png" sizes="192x192" href="data:image/png;base64,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">
+  <link rel="apple-touch-icon" href="data:image/png;base64,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">
   <link rel="stylesheet" href="./styles.css">
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -18,207 +18,349 @@
 </head>
 <body>
 <div class="container">
-  <!-- En-tête -->
+  <!-- En-tête compact avec icône RV by RB -->
   <header class="header-bar">
-    <div>
-      <h1>RB RailVigie — Contrôle des Intervalles, Repos, Week-ends &amp; Heures</h1>
-      <p class="subtitle">
-        Audit réglementaire autonome CP 226 : Repos 14h (Anomalie &le;12h &amp; Rattrapage) • Découcher 9h • RX 38h vs Alternement OO • Week-ends • Heures Sup.
-      </p>
+    <div class="brand-wrap">
+      <img src="data:image/png;base64,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" alt="RV by RB" class="app-logo">
+      <div>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <h1>RB RailVigie</h1>
+          <span id="quickStatusBanner" class="badge b-ok">✓ Conforme</span>
+        </div>
+        <p class="subtitle">
+          Vigie CP 226 : Repos 14h (&le;12h) • Rattrapages • Hôtel 9h • RX 38h vs OO • Week-ends
+        </p>
+      </div>
     </div>
     <div class="btn-group">
-      <button class="btn-amber" onclick="loadOctoberDemo()">Charger Exemple Octobre 2026</button>
+      <button class="btn-amber" onclick="loadOctoberDemo()">Exemple Oct. 2026</button>
       <button class="btn-outline" onclick="resetBlankMonth()">Mois Vierge</button>
-      <button class="btn-green" onclick="generateAuditPDF()">Exporter PDF (Traçabilité)</button>
+      <button class="btn-green" onclick="generateAuditPDF()">PDF</button>
     </div>
   </header>
 
-  <!-- Bandeau supérieur : Configuration -->
-  <section class="grid-top">
-    <!-- 1. Identification & Période -->
-    <div class="card">
-      <h2>1. Conducteur &amp; Période</h2>
-      <div class="form-row">
-        <div class="field">
-          <label>Nom du conducteur (vierge par défaut)</label>
-          <input type="text" id="driverInput" value="" placeholder="Ex: Rémy Brasseur" oninput="checkDriverMatch()">
-          <div id="driverMatchInfo" class="match-status">Case vierge par défaut (pour partage aux collègues).</div>
+  <!-- ONGLET 1 : Mois en cours, Conducteur & Période (Point 1) + Simulateur Dépassement (Point 2) -->
+  <main id="tabPanel-1" class="tab-panel active">
+    <div class="grid-two">
+      <!-- Point 1 : Conducteur & Période -->
+      <div class="card">
+        <h2>1. Conducteur &amp; Période (Mois en cours)</h2>
+        <div class="form-row">
+          <div class="field">
+            <label>Nom du conducteur (vierge par défaut)</label>
+            <input type="text" id="driverInput" value="" placeholder="Ex: Rémy Brasseur" oninput="checkDriverMatch()">
+            <div id="driverMatchInfo" class="match-status">Case vierge par défaut (prête pour partage aux collègues).</div>
+          </div>
+          <div class="field">
+            <label>Nom complet sur fiche E500</label>
+            <input type="text" id="e500FullName" value="" placeholder="Ex: Rémy Marcel L BRASSEUR" oninput="checkDriverMatch()">
+          </div>
         </div>
-        <div class="field">
-          <label>Nom complet sur fiche E500</label>
-          <input type="text" id="e500FullName" value="" placeholder="Ex: Rémy Marcel L BRASSEUR" oninput="checkDriverMatch()">
+        <div class="form-row">
+          <div class="field">
+            <label>Matricule</label>
+            <input type="text" id="driverMatricule" value="" placeholder="Ex: 899008349" oninput="saveStateToLocal()">
+          </div>
+          <div class="field">
+            <label>Mois</label>
+            <select id="monthSelect" onchange="rebuildMonthChange()">
+              <option value="1">01 - Janvier</option>
+              <option value="2">02 - Févier</option>
+              <option value="3">03 - Mars</option>
+              <option value="4">04 - Avril</option>
+              <option value="5">05 - Mai</option>
+              <option value="6">06 - Juin</option>
+              <option value="7">07 - Juillet</option>
+              <option value="8">08 - Août</option>
+              <option value="9">09 - Septembre</option>
+              <option value="10" selected>10 - Octobre</option>
+              <option value="11">11 - Novembre</option>
+              <option value="12">12 - Décembre</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Année</label>
+            <input type="number" id="yearInput" value="2026" onchange="rebuildMonthChange()">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label>Cumul Heures Trimestre (Mois M-1 &amp; M-2)</label>
+            <input type="number" step="0.25" id="prevQuarterHours" value="0" oninput="recalculateAll()">
+          </div>
+          <div class="field">
+            <label>Semaines sur le trimestre (ex: 13)</label>
+            <input type="number" id="quarterWeeks" value="13" oninput="recalculateAll()">
+          </div>
         </div>
       </div>
-      <div class="form-row">
-        <div class="field">
-          <label>Matricule</label>
-          <input type="text" id="driverMatricule" value="" placeholder="Ex: 899008349">
+
+      <!-- Point 2 : Tester l'impact d'un dépassement de prestation -->
+      <div class="card">
+        <h2>2. Tester l'impact d'un dépassement de prestation</h2>
+        <p class="card-desc">
+          Modifie l'heure de fin d'un service pour vérifier tout de suite si cela crée un <strong>repos réduit anormal (&le; 12h00)</strong>, un rattrapage obligatoire, une perte des 38h d'un RX ou des heures supplémentaires.
+        </p>
+        <div class="form-row">
+          <div class="field">
+            <label>Jour du mois</label>
+            <input type="number" id="rtDay" min="1" max="31" value="14">
+          </div>
+          <div class="field">
+            <label>Nouvelle heure de fin</label>
+            <input type="text" id="rtNewEnd" placeholder="Ex: 03:30">
+          </div>
+          <div class="field">
+            <label>Motif / Train (Traçabilité PDF)</label>
+            <input type="text" id="rtReason" placeholder="Ex: Retard train 48120">
+          </div>
         </div>
-        <div class="field">
-          <label>Mois</label>
-          <select id="monthSelect" onchange="rebuildMonthChange()">
-            <option value="1">01 - Janvier</option>
-            <option value="2">02 - Févier</option>
-            <option value="3">03 - Mars</option>
-            <option value="4">04 - Avril</option>
-            <option value="5">05 - Mai</option>
-            <option value="6">06 - Juin</option>
-            <option value="7">07 - Juillet</option>
-            <option value="8">08 - Août</option>
-            <option value="9">09 - Septembre</option>
-            <option value="10" selected>10 - Octobre</option>
-            <option value="11">11 - Novembre</option>
-            <option value="12">12 - Décembre</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Année</label>
-          <input type="number" id="yearInput" value="2026" onchange="rebuildMonthChange()">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="field">
-          <label>Cumul Heures Trimestre (Mois M-1 &amp; M-2)</label>
-          <input type="number" step="0.25" id="prevQuarterHours" value="0" oninput="recalculateAll()">
-        </div>
-        <div class="field">
-          <label>Semaines sur le trimestre (ex: 13)</label>
-          <input type="number" id="quarterWeeks" value="13" oninput="recalculateAll()">
-        </div>
+        <button class="btn-red full-width" onclick="applyServiceOverrun()">
+          Vérifier l'impact sur les repos et heures supplémentaires
+        </button>
+        <div id="rtQuickFeedback" class="feedback-box"></div>
       </div>
     </div>
 
-    <!-- 2. Test rapide d'un dépassement de prestation sur les intervalles -->
-    <div class="card">
-      <h2>2. Tester l'impact d'un dépassement de prestation</h2>
+    <!-- Aperçu rapide pour passer directement au planning ou à la synthèse -->
+    <div class="card" style="margin-top: 14px;">
+      <h2>Accès rapide au mois sélectionné</h2>
       <p class="card-desc">
-        Modifie l'heure de fin d'un service pour vérifier tout de suite si cela crée un <strong>repos réduit anormal (&le; 12h00)</strong>, un rattrapage obligatoire, une perte des 38h d'un RX ou des heures supplémentaires.
+        Pour éviter de faire défiler un long écran sur ton téléphone, la grille complète des 31 jours dispose maintenant de son propre onglet <strong>« Planning »</strong> dans la barre en bas de l'écran.
       </p>
-      <div class="form-row">
-        <div class="field">
-          <label>Jour du mois</label>
-          <input type="number" id="rtDay" min="1" max="31" value="14">
+      <div style="display:flex; flex-wrap:wrap; gap:8px;">
+        <button class="btn-amber" onclick="switchTab(2)">Ouvrir le Planning du Mois (Grille E500)</button>
+        <button class="btn-outline" onclick="switchTab(3)">Voir la Synthèse (Pt 4)</button>
+        <button class="btn-outline" onclick="switchTab(4)">Gérer les Compteurs (Pt 3)</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ONGLET 2 : Synthèse (Point 4 — Intervalles, Repos, Week-ends & Heures Supplémentaires) -->
+  <section id="tabPanel-2" class="tab-panel">
+    <div class="card">
+      <h2>4. Synthèse — Intervalles, Repos, Week-ends &amp; Heures Supplémentaires</h2>
+      <p class="card-desc">
+        Vue consolidée en temps réel de tes prestations du mois, du respect des temps de repos et des seuils d'heures supplémentaires (sans calcul de primes).
+      </p>
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="label">Heures Prestées (Mois)</div>
+          <div class="val" id="kpiTotalHours">0h00</div>
+          <div class="sub" id="kpiServiceCount">0 prestation(s) BVTS</div>
         </div>
-        <div class="field">
-          <label>Nouvelle heure de fin</label>
-          <input type="text" id="rtNewEnd" placeholder="Ex: 03:30">
+        <div class="kpi">
+          <div class="label">Week-end (Samedi / Dimanche)</div>
+          <div class="val" id="kpiWeekendHours">0h00 / 0h00</div>
+          <div class="sub">100 % selon le jour de début du service</div>
         </div>
-        <div class="field">
-          <label>Motif / Train (Traçabilité PDF)</label>
-          <input type="text" id="rtReason" placeholder="Ex: Retard train 48120">
+        <div class="kpi">
+          <div class="label">Heures Sup. Jour / Semaine</div>
+          <div class="val" id="kpiOvertimeDayWeek">0h00 / 0h00</div>
+          <div class="sub">Seuils : &gt;10h/jour • &gt;46h/semaine</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Heures Sup. Trimestrielles</div>
+          <div class="val" id="kpiOvertimeQuarter">0h00</div>
+          <div class="sub" id="kpiQuarterSub">Moyenne &gt;38h/semaine</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Repos RX &amp; Alternements OO</div>
+          <div class="val" id="kpiRxOoCount">0 RX / 0 OO</div>
+          <div class="sub">RX &ge; 38h (62h double) • OO si &lt; 38h</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Découchers (Hôtel &ge; 9h)</div>
+          <div class="val" id="kpiHotelCount">0 découcher</div>
+          <div class="sub">Saute le rattrapage du 14h</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Repos Réduits (&lt;14h / &le;12h)</div>
+          <div class="val" id="kpiReducedRest">0 réduit / 0 &le;12h</div>
+          <div class="sub">Max 1/sem • Anormal dès &le;12h00</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Conformité du Planning</div>
+          <div class="val" id="kpiAnomalies" style="color:var(--green);">Conforme</div>
+          <div class="sub" id="kpiRestSub">0 anomalie détectée</div>
         </div>
       </div>
-      <button class="btn-red full-width" onclick="applyServiceOverrun()">
-        Vérifier l'impact sur les repos et heures supplémentaires
-      </button>
-      <div id="rtQuickFeedback" class="feedback-box"></div>
-    </div>
 
-    <!-- 3. Compteurs E500 -->
+      <div style="margin-top: 16px; display:flex; flex-wrap:wrap; gap:10px;">
+        <button class="btn-outline" onclick="switchTab(5)">Voir le journal d'Audit &amp; Traçabilité</button>
+        <button class="btn-green" onclick="generateAuditPDF()">Exporter le rapport PDF complet</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ONGLET 3 : Compteurs élargis (Point 3 — Congés, Repos, Maladie, Récup — Sans débordement) -->
+  <section id="tabPanel-3" class="tab-panel">
     <div class="card">
       <h2>3. Compteurs (Congés, Repos, Maladie, Récup)</h2>
-      <div class="counters-grid">
-        <div class="field"><label>RX (Repos)</label><input type="number" id="cnt_RX" value="118" oninput="recalculateAll()"></div>
-        <div class="field"><label>NMBS</label><input type="number" id="cnt_NMBS" value="0" oninput="recalculateAll()"></div>
-        <div class="field"><label>REC (h)</label><input type="number" step="0.1" id="cnt_REC" value="27.2" oninput="recalculateAll()"></div>
-        <div class="field"><label>WKD</label><input type="number" id="cnt_WKD" value="2" oninput="recalculateAll()"></div>
-        <div class="field"><label>ZZ (Mal.)</label><input type="number" id="cnt_ZZ" value="0" oninput="recalculateAll()"></div>
-        <div class="field"><label>ZB (45+)</label><input type="number" id="cnt_ZB" value="10" oninput="recalculateAll()"></div>
-        <div class="field"><label>BLH</label><input type="number" id="cnt_BLH" value="0" oninput="recalculateAll()"></div>
-        <div class="field"><label>BELH</label><input type="number" step="0.5" id="cnt_BELH" value="6.5" oninput="recalculateAll()"></div>
-        <div class="field"><label>BTH</label><input type="number" id="cnt_BTH" value="0" oninput="recalculateAll()"></div>
-        <div class="field"><label>BTULH</label><input type="number" id="cnt_BTULH" value="0" oninput="recalculateAll()"></div>
+      <p class="card-desc">
+        Interface élargie adaptée à la largeur de ton écran mobile : saisis tes soldes de départ E500 ci-dessous, le décompte du mois se met à jour automatiquement.
+      </p>
+      <div class="counters-grid-wide">
+        <div class="field">
+          <label>RX — Jours de repos</label>
+          <input type="number" id="cnt_RX" value="118" oninput="recalculateAll()">
+        </div>
+        <div class="field">
+          <label>NMBS — Congés SNCB</label>
+          <input type="number" id="cnt_NMBS" value="0" oninput="recalculateAll()">
+        </div>
+        <div class="field">
+          <label>REC — Heures de récup. (h)</label>
+          <input type="number" step="0.1" id="cnt_REC" value="27.2" oninput="recalculateAll()">
+        </div>
+        <div class="field">
+          <label>WKD — Repos de week-end</label>
+          <input type="number" id="cnt_WKD" value="2" oninput="recalculateAll()">
+        </div>
+        <div class="field">
+          <label>ZZ — Jours de maladie</label>
+          <input type="number" id="cnt_ZZ" value="0" oninput="recalculateAll()">
+        </div>
+        <div class="field">
+          <label>ZB — Congé sans solde 45+</label>
+          <input type="number" id="cnt_ZB" value="10" oninput="recalculateAll()">
+        </div>
+        <div class="field">
+          <label>BLH — Solde congés légaux</label>
+          <input type="number" id="cnt_BLH" value="0" oninput="recalculateAll()">
+        </div>
+        <div class="field">
+          <label>BELH — Congés extralégaux</label>
+          <input type="number" step="0.5" id="cnt_BELH" value="6.5" oninput="recalculateAll()">
+        </div>
+        <div class="field">
+          <label>BTH — Congés reportés N-1</label>
+          <input type="number" id="cnt_BTH" value="0" oninput="recalculateAll()">
+        </div>
+        <div class="field">
+          <label>BTULH — Congés non rémunérés</label>
+          <input type="number" id="cnt_BTULH" value="0" oninput="recalculateAll()">
+        </div>
       </div>
+
       <div id="counterSummaryBox" class="counter-summary"></div>
-    </div>
-  </section>
 
-  <!-- Indicateurs Clés (KPIs sans aucun calcul de prime) -->
-  <section class="card">
-    <h2>4. Synthèse — Intervalles, Repos, Week-ends &amp; Heures Supplémentaires</h2>
-    <div class="kpi-grid">
-      <div class="kpi">
-        <div class="label">Heures Prestées (Mois)</div>
-        <div class="val" id="kpiTotalHours">0h00</div>
-        <div class="sub" id="kpiServiceCount">0 prestation(s) BVTS</div>
-      </div>
-      <div class="kpi">
-        <div class="label">Week-end (Samedi / Dimanche)</div>
-        <div class="val" id="kpiWeekendHours">0h00 / 0h00</div>
-        <div class="sub">Selon le jour de début du service</div>
-      </div>
-      <div class="kpi">
-        <div class="label">Heures Sup. Jour / Semaine</div>
-        <div class="val" id="kpiOvertimeDayWeek">0h00 / 0h00</div>
-        <div class="sub">Seuils : &gt;10h/jour • &gt;46h/sem</div>
-      </div>
-      <div class="kpi">
-        <div class="label">Heures Sup. Trimestrielles</div>
-        <div class="val" id="kpiOvertimeQuarter">0h00</div>
-        <div class="sub" id="kpiQuarterSub">Moyenne &gt;38h/semaine</div>
-      </div>
-      <div class="kpi">
-        <div class="label">Repos RX &amp; Alternements OO</div>
-        <div class="val" id="kpiRxOoCount">0 RX / 0 OO</div>
-        <div class="sub">RX &ge; 38h (62h double) • OO si &lt; 38h</div>
-      </div>
-      <div class="kpi">
-        <div class="label">Découchers (Hôtel &ge; 9h)</div>
-        <div class="val" id="kpiHotelCount">0 découcher</div>
-        <div class="sub">Saute le rattrapage du 14h</div>
-      </div>
-      <div class="kpi">
-        <div class="label">Repos Réduits (&lt;14h / &le;12h)</div>
-        <div class="val" id="kpiReducedRest">0 réduit / 0 &le;12h</div>
-        <div class="sub">Max 1/sem • Anormal dès &le;12h00</div>
-      </div>
-      <div class="kpi">
-        <div class="label">Conformité du Planning</div>
-        <div class="val" id="kpiAnomalies" style="color:var(--green);">Conforme</div>
-        <div class="sub" id="kpiRestSub">0 anomalie détectée</div>
+      <!-- Tableau récapitulatif clair des compteurs -->
+      <div class="table-wrap" style="margin-top: 14px; max-height: none;">
+        <table>
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Signification</th>
+              <th>Solde Initial</th>
+              <th>Posé ce mois</th>
+              <th>Solde Calculé</th>
+            </tr>
+          </thead>
+          <tbody id="counterDetailTableBody"></tbody>
+        </table>
       </div>
     </div>
   </section>
 
-  <!-- Journaux d'Audit et de Traçabilité -->
-  <section class="grid-top">
+  <!-- ONGLET 4 : Planning Mensuel E500 dédié (avec filtres rapides pour mobile) -->
+  <section id="tabPanel-4" class="tab-panel">
     <div class="card">
-      <h2>5. Contrôle des Intervalles, Repos 14h (&le;12h), Rattrapages &amp; RX (38h) vs OO</h2>
-      <div class="log-list" id="restAuditList"></div>
-    </div>
-    <div class="card">
-      <h2>6. Traçabilité des Heures Supplémentaires (Jour / Semaine / Trimestre) &amp; Week-ends</h2>
-      <div class="log-list" id="traceabilityList"></div>
+      <div class="section-head">
+        <h2>Grille Mensuelle du Planning (E500)</h2>
+        <div class="filter-bar">
+          <button class="filter-chip active" id="flt-all" onclick="setScheduleFilter('all')">Tous</button>
+          <button class="filter-chip" id="flt-bvts" onclick="setScheduleFilter('bvts')">Prestations</button>
+          <button class="filter-chip" id="flt-rxoo" onclick="setScheduleFilter('rxoo')">RX / OO</button>
+          <button class="filter-chip" id="flt-anom" onclick="setScheduleFilter('anom')">Anomalies</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Jour</th>
+              <th>Code</th>
+              <th>Début</th>
+              <th>Fin</th>
+              <th>Découcher (Lit)</th>
+              <th>2e Presta (Lit 2)</th>
+              <th>Trajet Hôtel (min)</th>
+              <th>Fin Prévue Initiale</th>
+              <th>Origine / Train / Note</th>
+              <th>Durée Service</th>
+              <th>Qualification</th>
+              <th>Intervalle / Repos Avant</th>
+              <th>Diagnostic Réglementaire</th>
+            </tr>
+          </thead>
+          <tbody id="scheduleBody"></tbody>
+        </table>
+      </div>
     </div>
   </section>
 
-  <!-- Grille Mensuelle Interactive -->
-  <section class="card">
-    <h2>7. Grille Mensuelle de Contrôle (E500)</h2>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Jour</th>
-            <th>Code</th>
-            <th>Début</th>
-            <th>Fin</th>
-            <th>Découcher (Lit)</th>
-            <th>2e Presta (Lit 2)</th>
-            <th>Trajet Hôtel (min)</th>
-            <th>Fin Prévue Initiale</th>
-            <th>Origine / Train / Note</th>
-            <th>Durée Service</th>
-            <th>Qualification</th>
-            <th>Intervalle / Repos Avant</th>
-            <th>Diagnostic Réglementaire</th>
-          </tr>
-        </thead>
-        <tbody id="scheduleBody"></tbody>
-      </table>
+  <!-- ONGLET 5 : Audit des Intervalles/Repos, Traçabilité des Heures Sup. & Mémos Règles -->
+  <section id="tabPanel-5" class="tab-panel">
+    <div class="grid-two">
+      <div class="card">
+        <h2>5. Contrôle des Intervalles, Repos 14h (&le;12h), Rattrapages &amp; RX (38h) vs OO</h2>
+        <div class="log-list" id="restAuditList"></div>
+      </div>
+      <div class="card">
+        <h2>6. Traçabilité des Heures Supplémentaires (Jour / Semaine / Trimestre) &amp; Week-ends</h2>
+        <div class="log-list" id="traceabilityList"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 14px;">
+      <h2>7. Mémo des Règles Appliquées (CP 226 / Lineas)</h2>
+      <div class="rules-grid">
+        <div class="rule-box">
+          <strong>Repos Domicile (14h00) &amp; Seuil &le;12h00</strong>
+          <p>Minimum 14h00 entre deux services à domicile. Réduction autorisée 1 fois/semaine (min. légal 9h00). Dès <strong>12h00 ou moins</strong>, alerte Anomalie rouge.</p>
+        </div>
+        <div class="rule-box">
+          <strong>Rattrapage &amp; Saut du Découcher</strong>
+          <p>Tout temps manquant sous 14h00 doit être ajouté au repos suivant. Si le repos suivant est un découcher (hôtel &ge; 9h00), le rattrapage saute automatiquement au repos domicile d'après.</p>
+        </div>
+        <div class="rule-box">
+          <strong>Repos RX (38h / 62h) vs Alternement (OO)</strong>
+          <p>Un <code>RX</code> isolé exige 38h00 (+24h par <code>RX</code> supplémentaire, soit 62h00 pour 2 <code>RX</code>). Si les 38h ne peuvent pas être atteintes, un <code>OO</code> (période blanche) doit remplacer le <code>RX</code>.</p>
+        </div>
+        <div class="rule-box">
+          <strong>Week-ends &amp; Heures Supplémentaires</strong>
+          <p>Début vendredi = 100% Semaine • Début samedi = 100% Samedi • Début dimanche = 100% Dimanche. Heures sup. calculées à &gt;10h/jour, &gt;46h/semaine et &gt;38h/sem sur le trimestre.</p>
+        </div>
+      </div>
     </div>
   </section>
 </div>
+
+<!-- Barre d'onglets fixée EN BAS de l'application (Style natif Android) -->
+<nav class="bottom-tabs-nav" role="tablist">
+  <button class="bottom-tab-btn active" id="tabBtn-1" onclick="switchTab(1)">
+    <span class="tab-icon">📅</span>
+    <span class="tab-label">1. Période</span>
+  </button>
+  <button class="bottom-tab-btn" id="tabBtn-2" onclick="switchTab(2)">
+    <span class="tab-icon">📊</span>
+    <span class="tab-label">2. Synthèse</span>
+  </button>
+  <button class="bottom-tab-btn" id="tabBtn-3" onclick="switchTab(3)">
+    <span class="tab-icon">🗂️</span>
+    <span class="tab-label">3. Compteurs</span>
+  </button>
+  <button class="bottom-tab-btn" id="tabBtn-4" onclick="switchTab(4)">
+    <span class="tab-icon">🚆</span>
+    <span class="tab-label">4. Planning</span>
+  </button>
+  <button class="bottom-tab-btn" id="tabBtn-5" onclick="switchTab(5)">
+    <span class="tab-icon">🛡️</span>
+    <span class="tab-label">5. Audit</span>
+    <span id="tabBadgeAnom" class="tab-badge" style="display:none;">0</span>
+  </button>
+</nav>
 
 <script src="./app.js"></script>
 </body>

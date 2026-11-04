@@ -1,17 +1,87 @@
 // RB RailVigie — Application autonome de contrôle des intervalles, repos, week-ends, compteurs et heures supplémentaires
-// Sans calcul de primes ni connexion externe (version de vérification complète + PWA plein écran)
+// Barre de 5 onglets en bas + Point 3 élargi sans débordement + Sauvegarde locale automatique + Icône RV by RB
 
 let scheduleData = [];
 let lastComputedReport = null;
+let currentScheduleFilter = 'all';
 
+const STORAGE_KEY = 'rb_railvigie_state_v1';
 const DAY_NAMES = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 const CODES = ['BVTS', 'RX', 'OO', 'ELH', 'REC', 'WKD', 'ZZ', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH', 'NMBS', '-'];
 
-// Enregistrement du Service Worker pour activer le mode plein écran (sans barre d'adresse) sur Chrome Android
+// Enregistrement du Service Worker pour le mode plein écran (sans barre d'adresse) sur Chrome Android
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   });
+}
+
+// Navigation entre les 5 onglets du bas
+function switchTab(tabIndex) {
+  for (let i = 1; i <= 5; i++) {
+    const btn = document.getElementById(`tabBtn-${i}`);
+    const panel = document.getElementById(`tabPanel-${i}`);
+    if (btn && panel) {
+      if (i === tabIndex) {
+        btn.classList.add('active');
+        panel.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+        panel.classList.remove('active');
+      }
+    }
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Filtre rapide sur l'onglet 4 (Planning)
+function setScheduleFilter(filterType) {
+  currentScheduleFilter = filterType;
+  ['all', 'bvts', 'rxoo', 'anom'].forEach(k => {
+    const el = document.getElementById(`flt-${k}`);
+    if (el) el.classList.toggle('active', k === filterType);
+  });
+  applyRowFilter();
+}
+
+function applyRowFilter() {
+  scheduleData.forEach(r => {
+    const tr = document.getElementById(`row-${r.day}`);
+    if (!tr) return;
+    const isAnom = tr.classList.contains('row-anomaly');
+    let show = true;
+    if (currentScheduleFilter === 'bvts') show = (r.code === 'BVTS');
+    else if (currentScheduleFilter === 'rxoo') show = (r.code === 'RX' || r.code === 'OO');
+    else if (currentScheduleFilter === 'anom') show = isAnom;
+    tr.classList.toggle('hidden-row', !show);
+  });
+}
+
+// Sauvegarde et chargement localStorage (pour conserver ses saisies sur mobile)
+function saveStateToLocal() {
+  try {
+    const state = {
+      month: document.getElementById('monthSelect').value,
+      year: document.getElementById('yearInput').value,
+      driverMatricule: document.getElementById('driverMatricule').value,
+      prevQuarterHours: document.getElementById('prevQuarterHours').value,
+      quarterWeeks: document.getElementById('quarterWeeks').value,
+      counters: {
+        RX: document.getElementById('cnt_RX').value,
+        NMBS: document.getElementById('cnt_NMBS').value,
+        REC: document.getElementById('cnt_REC').value,
+        WKD: document.getElementById('cnt_WKD').value,
+        ZZ: document.getElementById('cnt_ZZ').value,
+        ZB: document.getElementById('cnt_ZB').value,
+        BLH: document.getElementById('cnt_BLH').value,
+        BELH: document.getElementById('cnt_BELH').value,
+        BTH: document.getElementById('cnt_BTH').value,
+        BTULH: document.getElementById('cnt_BTULH').value
+      },
+      scheduleData
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {}
 }
 
 // Normalisation pour la reconnaissance souple du nom ("Rémy Brasseur" <-> "Rémy Marcel L BRASSEUR")
@@ -211,6 +281,7 @@ function loadOctoberDemo() {
 
   renderTable();
   recalculateAll();
+  switchTab(4);
 }
 
 function renderTable() {
@@ -647,26 +718,60 @@ function recalculateAll() {
     });
   }
 
-  // 5. Mise à jour des compteurs (RX, OO, ELH, REC, WKD, ZZ...)
+  // 5. Mise à jour des compteurs (Onglet 3 - Point 3 élargi)
   const usedCounts = { RX: 0, OO: 0, ELH: 0, REC: 0, WKD: 0, ZZ: 0, ZB: 0, BLH: 0, BELH: 0, BTH: 0, BTULH: 0, NMBS: 0 };
   scheduleData.forEach(r => {
     if (usedCounts[r.code] !== undefined) usedCounts[r.code]++;
   });
+
   const baseRX = parseFloat(document.getElementById('cnt_RX').value || '0');
-  const baseBELH = parseFloat(document.getElementById('cnt_BELH').value || '0');
+  const baseNMBS = parseFloat(document.getElementById('cnt_NMBS').value || '0');
   const baseREC = parseFloat(document.getElementById('cnt_REC').value || '0');
   const baseWKD = parseFloat(document.getElementById('cnt_WKD').value || '0');
   const baseZZ = parseFloat(document.getElementById('cnt_ZZ').value || '0');
   const baseZB = parseFloat(document.getElementById('cnt_ZB').value || '0');
+  const baseBLH = parseFloat(document.getElementById('cnt_BLH').value || '0');
+  const baseBELH = parseFloat(document.getElementById('cnt_BELH').value || '0');
+  const baseBTH = parseFloat(document.getElementById('cnt_BTH').value || '0');
+  const baseBTULH = parseFloat(document.getElementById('cnt_BTULH').value || '0');
+
+  const usedExtralegal = usedCounts.ELH + usedCounts.BELH;
 
   document.getElementById('counterSummaryBox').innerHTML =
     `Utilisés ce mois : <strong>${usedCounts.RX} RX</strong> (Solde RX : ${baseRX - usedCounts.RX}) • ` +
     `<strong>${usedCounts.OO} OO (Alternements)</strong> • ` +
-    `<strong>${usedCounts.ELH} ELH</strong> (Solde BELH : ${baseBELH - usedCounts.ELH}) • ` +
+    `<strong>${usedExtralegal} ELH/BELH</strong> (Solde BELH : ${baseBELH - usedExtralegal}) • ` +
     `<strong>WKD : ${baseWKD - usedCounts.WKD}</strong> • <strong>REC : ${baseREC}h</strong> • ` +
     `<strong>ZZ : ${baseZZ + usedCounts.ZZ}</strong> • <strong>ZB : ${baseZB - usedCounts.ZB}</strong>`;
 
-  // 6. Mise à jour des KPIs
+  const counterRows = [
+    { code: 'RX', label: 'Jours de repos périodiques', init: baseRX, used: usedCounts.RX, rem: baseRX - usedCounts.RX },
+    { code: 'OO', label: 'Alternements (Périodes blanches)', init: '-', used: usedCounts.OO, rem: `${usedCounts.OO} posé(s)` },
+    { code: 'NMBS', label: 'Congés SNCB', init: baseNMBS, used: usedCounts.NMBS, rem: baseNMBS - usedCounts.NMBS },
+    { code: 'REC', label: 'Heures de récupération (h)', init: `${baseREC}h`, used: `${usedCounts.REC} j`, rem: `${baseREC}h` },
+    { code: 'WKD', label: 'Repos de week-end', init: baseWKD, used: usedCounts.WKD, rem: baseWKD - usedCounts.WKD },
+    { code: 'ZZ', label: 'Jours de maladie', init: baseZZ, used: usedCounts.ZZ, rem: baseZZ + usedCounts.ZZ },
+    { code: 'ZB', label: 'Congé sans solde 45+', init: baseZB, used: usedCounts.ZB, rem: baseZB - usedCounts.ZB },
+    { code: 'BLH', label: 'Solde de congés légaux', init: baseBLH, used: usedCounts.BLH, rem: baseBLH - usedCounts.BLH },
+    { code: 'BELH / ELH', label: 'Solde de congés extralégaux', init: baseBELH, used: usedExtralegal, rem: baseBELH - usedExtralegal },
+    { code: 'BTH', label: 'Congés reportés année précédente', init: baseBTH, used: usedCounts.BTH, rem: baseBTH - usedCounts.BTH },
+    { code: 'BTULH', label: 'Congés légaux non rémunérés', init: baseBTULH, used: usedCounts.BTULH, rem: baseBTULH - usedCounts.BTULH }
+  ];
+
+  const cBody = document.getElementById('counterDetailTableBody');
+  if (cBody) {
+    cBody.innerHTML = counterRows.map(c => `
+      <tr>
+        <td style="font-weight:700; color:var(--accent);">${c.code}</td>
+        <td style="text-align:left;">${c.label}</td>
+        <td>${c.init}</td>
+        <td>${c.used}</td>
+        <td style="font-weight:700;">${c.rem}</td>
+      </tr>
+    `).join('');
+  }
+
+  // 6. Mise à jour des KPIs (Onglet 2 - Point 4)
   document.getElementById('kpiTotalHours').textContent = formatMinToHHMM(totalWorkMin);
   document.getElementById('kpiServiceCount').textContent = `${serviceCount} prestation(s) BVTS`;
   document.getElementById('kpiWeekendHours').textContent = `${formatMinToHHMM(totalSatMin)} / ${formatMinToHHMM(totalSunMin)}`;
@@ -680,17 +785,35 @@ function recalculateAll() {
   const errCount = restAuditEvents.filter(e => e.level === 'err').length;
   const kpiAnomEl = document.getElementById('kpiAnomalies');
   const kpiRestSub = document.getElementById('kpiRestSub');
+  const quickBanner = document.getElementById('quickStatusBanner');
+  const tabBadge = document.getElementById('tabBadgeAnom');
+
   if (errCount > 0) {
     kpiAnomEl.textContent = `${errCount} Anomalie(s)`;
     kpiAnomEl.style.color = 'var(--red)';
-    kpiRestSub.textContent = 'Vérifiez le journal d'audit ci-dessous';
+    kpiRestSub.textContent = 'Voir Onglet 5 (Audit)';
+    if (quickBanner) {
+      quickBanner.className = 'badge b-err';
+      quickBanner.textContent = `⚠️ ${errCount} Anomalie(s)`;
+    }
+    if (tabBadge) {
+      tabBadge.style.display = 'inline-block';
+      tabBadge.textContent = String(errCount);
+    }
   } else {
     kpiAnomEl.textContent = 'Conforme';
     kpiAnomEl.style.color = 'var(--green)';
     kpiRestSub.textContent = 'Tous les intervalles & repos sont valides';
+    if (quickBanner) {
+      quickBanner.className = 'badge b-ok';
+      quickBanner.textContent = '✓ Conforme';
+    }
+    if (tabBadge) {
+      tabBadge.style.display = 'none';
+    }
   }
 
-  // 7. Affichage des journaux
+  // 7. Affichage des journaux (Onglet 5 - Points 5 & 6)
   const restListEl = document.getElementById('restAuditList');
   restListEl.innerHTML = restAuditEvents.length
     ? restAuditEvents.map(e => `
@@ -710,6 +833,9 @@ function recalculateAll() {
         </div>
       `).join('')
     : `<div class="log-item info">Aucune heure supplémentaire ni prestation de week-end sur la période.</div>`;
+
+  applyRowFilter();
+  saveStateToLocal();
 
   lastComputedReport = {
     month, year,
