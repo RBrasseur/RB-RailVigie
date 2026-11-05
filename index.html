@@ -528,7 +528,7 @@
       <div class="rs-title-block">
         <div class="rs-title-row">
           <h1>RB RailVigie</h1>
-          <span id="saveStatusBadge" class="saved-pill">Sauvegardé • v15</span>
+          <span id="saveStatusBadge" class="saved-pill">Sauvegardé • v16</span>
         </div>
         <p id="headerDriverSub" class="rs-subtitle">Vierge • Lineas / CP 226</p>
       </div>
@@ -1402,6 +1402,7 @@ function loadOctoberDemo() {
   document.getElementById('cnt_RX').value = '118';
   document.getElementById('cnt_NMBS').value = '0';
   document.getElementById('cnt_REC').value = '27.2';
+  document.getElementById('cnt_WKD').value = '4';
   document.getElementById('cnt_WKD').value = '2';
   document.getElementById('cnt_ZZ').value = '0';
   document.getElementById('cnt_ZB').value = '10';
@@ -1487,7 +1488,7 @@ function renderTable() {
       '</select></td>' +
       '<td><input class="time-input" type="text" value="' + (r.start2 ? r.start2 + '-' + r.end2 : '') + '" placeholder="HH:MM-HH:MM" onchange="updateSecondShift(' + idx + ', this.value)"></td>' +
       '<td><input class="num-input" type="number" min="0" value="' + (r.trajetMin || 0) + '" onchange="updateCell(' + idx + ', \'trajetMin\', parseInt(this.value||0,10))"></td>' +
-      '<td><input type="text" style="min-width:110px;" value="' + (r.note || '') + '" placeholder="Train / Note" onchange="updateCell(' + idx + ', \'note\', this.value)"></td>' +
+      
       '<td id="cell-dur-' + r.day + '">-</td>' +
       '<td id="cell-qual-' + r.day + '">-</td>' +
       '<td id="cell-rest-' + r.day + '">-</td>' +
