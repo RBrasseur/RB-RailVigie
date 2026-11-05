@@ -10,9 +10,11 @@
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="RB RailVigie">
   <meta name="mobile-web-app-capable" content="yes">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     :root {
@@ -33,6 +35,7 @@
       margin: 0;
       padding: 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
     }
     html, body {
       width: 100%;
@@ -44,7 +47,7 @@
     }
     body {
       padding: 10px;
-      padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+      padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
     }
     .container {
       max-width: 1440px;
@@ -70,7 +73,7 @@
       align-items: center;
       gap: 12px;
       min-width: 0;
-      flex: 1 1 230px;
+      flex: 1 1 220px;
     }
     .app-logo {
       width: 44px;
@@ -92,7 +95,7 @@
       flex-wrap: wrap;
       gap: 6px;
     }
-    button {
+    button, .file-btn-label {
       background: var(--blue);
       color: #fff;
       border: none;
@@ -104,16 +107,20 @@
       transition: 0.15s;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
+      text-decoration: none;
+      user-select: none;
     }
-    button:hover { filter: brightness(1.12); }
+    button:hover, .file-btn-label:hover { filter: brightness(1.12); }
+    button:active, .file-btn-label:active { transform: scale(0.98); }
     .btn-amber { background: var(--accent); color: #000; }
-    .btn-green { background: var(--green); }
-    .btn-red { background: var(--red); }
+    .btn-green { background: var(--green); color: #fff; }
+    .btn-red { background: var(--red); color: #fff; }
     .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
     .full-width { width: 100%; justify-content: center; }
 
-    /* Barre de 5 onglets fixée EN BAS de l'écran */
+    /* Barre de 5 onglets fixée EN BAS (Compatible Android & Apple iOS) */
     .bottom-tabs-nav {
       position: fixed;
       bottom: 0;
@@ -125,8 +132,9 @@
       gap: 4px;
       background: rgba(15, 23, 42, 0.98);
       backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       border-top: 1px solid var(--border);
-      padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px)) 6px;
+      padding: 6px 6px calc(8px + env(safe-area-inset-bottom, 0px)) 6px;
       box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.45);
     }
     .bottom-tab-btn {
@@ -142,20 +150,23 @@
       justify-content: center;
       gap: 2px;
       width: 100%;
+      cursor: pointer;
     }
     .bottom-tab-btn .tab-icon {
       font-size: 1.15rem;
       line-height: 1;
+      pointer-events: none;
     }
     .bottom-tab-btn .tab-label {
       font-size: 0.7rem;
       font-weight: 700;
       white-space: nowrap;
+      pointer-events: none;
     }
     .bottom-tab-btn.active {
-      background: rgba(245, 158, 11, 0.16);
+      background: rgba(245, 158, 11, 0.18);
       color: var(--accent);
-      border-color: rgba(245, 158, 11, 0.4);
+      border-color: rgba(245, 158, 11, 0.45);
     }
     .tab-badge {
       position: absolute;
@@ -167,6 +178,7 @@
       padding: 1px 5px;
       font-size: 0.65rem;
       font-weight: 800;
+      pointer-events: none;
     }
 
     .tab-panel { display: none; width: 100%; }
@@ -229,7 +241,7 @@
       width: 100%;
     }
 
-    /* Point 3 élargi : 2 colonnes propres sur mobile, zéro débordement */
+    /* Compteurs élargis : 2 colonnes propres sur mobile, zéro débordement */
     .counters-grid-wide {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
@@ -269,7 +281,6 @@
     }
     input:focus, select:focus { outline: 1px solid var(--accent); }
     .match-status { font-size: 0.74rem; color: var(--muted); margin-top: 3px; }
-    .feedback-box { margin-top: 8px; font-size: 0.8rem; }
     .counter-summary {
       background: #0b1120;
       border: 1px solid var(--border);
@@ -298,6 +309,7 @@
 
     .table-wrap {
       overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
       border: 1px solid var(--border);
       border-radius: 8px;
       max-height: 62vh;
@@ -331,8 +343,8 @@
       min-width: 58px;
       text-align: center;
     }
-    .time-input { width: 70px !important; }
-    .num-input { width: 56px !important; }
+    .time-input { width: 72px !important; }
+    .num-input { width: 58px !important; }
 
     .badge {
       display: inline-block;
@@ -381,7 +393,7 @@
     .rule-box strong { color: var(--accent); display: block; margin-bottom: 4px; }
     .rule-box p { color: var(--muted); }
 
-    .qr-modal-overlay {
+    .modal-overlay {
       display: none;
       position: fixed;
       inset: 0;
@@ -402,10 +414,24 @@
       min-width: 210px;
       min-height: 210px;
     }
+    .import-box {
+      margin-top: 12px;
+      background: #0b1120;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px dashed var(--accent);
+    }
+    .import-btns {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
   </style>
 </head>
 <body>
 <div class="container">
+  <!-- En-tête avec icône RV by RB -->
   <header class="header-bar">
     <div class="brand-wrap">
       <img src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20512%20512%22%3E%3Crect%20width%3D%22512%22%20height%3D%22512%22%20rx%3D%2296%22%20fill%3D%22%230f172a%22/%3E%3Crect%20x%3D%2228%22%20y%3D%2228%22%20width%3D%22456%22%20height%3D%22456%22%20rx%3D%2276%22%20fill%3D%22%231e293b%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%2220%22/%3E%3Ctext%20x%3D%22256%22%20y%3D%22290%22%20font-family%3D%22system-ui%2Csans-serif%22%20font-size%3D%22220%22%20font-weight%3D%22800%22%20fill%3D%22%23f59e0b%22%20text-anchor%3D%22middle%22%3ERV%3C/text%3E%3Ctext%20x%3D%22442%22%20y%3D%22438%22%20font-family%3D%22system-ui%2Csans-serif%22%20font-size%3D%2268%22%20font-weight%3D%22700%22%20fill%3D%22%23f8fafc%22%20text-anchor%3D%22end%22%3Eby%20RB%3C/text%3E%3C/svg%3E" alt="RV by RB" class="app-logo">
@@ -420,22 +446,24 @@
       </div>
     </div>
     <div class="btn-group">
-      <button class="btn-outline" onclick="openShareQRModal()">📱 Partager (QR)</button>
-      <button class="btn-outline" onclick="resetBlankMonth()">Mois Vierge</button>
-      <button class="btn-amber" onclick="loadOctoberDemo()">Exemple Oct.</button>
-      <button class="btn-green" onclick="shareOrDownloadPDF()">📤 Partager PDF</button>
+      <button type="button" class="btn-outline" onclick="openShareQRModal()">📱 Partager (QR)</button>
+      <button type="button" class="btn-outline" onclick="resetBlankMonth()">Mois Vierge</button>
+      <button type="button" class="btn-amber" onclick="loadOctoberDemo()">Exemple Oct.</button>
+      <button type="button" class="btn-green" onclick="openExportModal()">📤 Exporter PDF / Cloud</button>
     </div>
   </header>
 
+  <!-- ONGLET 1 : Conducteur, Période, Import PDF/Image & Options Export (Sans le Point 2) -->
   <main id="tabPanel-1" class="tab-panel active">
     <div class="grid-two">
+      <!-- Bloc 1 : Conducteur, Période & Importation Horaires -->
       <div class="card">
-        <h2>1. Conducteur &amp; Période &amp; Import Horaires</h2>
+        <h2>1. Conducteur, Période &amp; Import Horaires</h2>
         <div class="form-row">
           <div class="field">
             <label>Nom du conducteur (vierge par défaut)</label>
             <input type="text" id="driverInput" value="" placeholder="Ex: Rémy Brasseur" oninput="checkDriverMatch()">
-            <div id="driverMatchInfo" class="match-status">Application 100 % vierge (prête pour partage).</div>
+            <div id="driverMatchInfo" class="match-status">Application 100 % vierge (prête pour partage aux collègues).</div>
           </div>
           <div class="field">
             <label>Nom complet sur fiche E500</label>
@@ -469,16 +497,7 @@
             <input type="number" id="yearInput" value="2026" onchange="rebuildMonthChange()">
           </div>
         </div>
-
-        <div style="margin-top:12px; background:#0b1120; padding:10px; border-radius:8px; border:1px dashed var(--border);">
-          <label style="font-size:0.75rem; color:var(--accent); font-weight:700; display:block; margin-bottom:6px;">
-            📥 Importer un Fichier Horaire (PDF E500 ou Image) :
-          </label>
-          <input type="file" id="scheduleFileInput" accept=".pdf,image/*" onchange="handleScheduleFileImport(event)" style="font-size:0.78rem; width:100%; color:var(--text);">
-          <div id="importStatusMsg" style="font-size:0.72rem; color:var(--muted); margin-top:4px;">Sélectionne un PDF E500 pour remplir la grille automatiquement.</div>
-        </div>
-
-        <div class="form-row" style="margin-top:10px;">
+        <div class="form-row">
           <div class="field">
             <label>Cumul Heures Trimestre (M-1 &amp; M-2)</label>
             <input type="number" step="0.25" id="prevQuarterHours" value="" placeholder="0" oninput="recalculateAll()">
@@ -488,38 +507,77 @@
             <input type="number" id="quarterWeeks" value="13" oninput="recalculateAll()">
           </div>
         </div>
+
+        <!-- Boutons distincts d'importation PDF et Image -->
+        <div class="import-box">
+          <label style="font-size:0.78rem; color:var(--accent); font-weight:700; display:block;">
+            📥 Importer mes horaires (PDF E500 ou Image de ma ligne) :
+          </label>
+          <div class="import-btns">
+            <label class="file-btn-label btn-amber">
+              📄 Importer un PDF
+              <input type="file" id="pdfFileInput" accept="application/pdf,.pdf" onchange="handleScheduleFileImport(event)" style="display:none;">
+            </label>
+            <label class="file-btn-label btn-outline">
+              🖼️ Importer une Image
+              <input type="file" id="imgFileInput" accept="image/*" onchange="handleScheduleFileImport(event)" style="display:none;">
+            </label>
+          </div>
+          <div id="importStatusMsg" style="font-size:0.74rem; color:var(--muted); margin-top:8px;">
+            Sélectionne un fichier PDF E500 ou une image de ta ligne.
+          </div>
+        </div>
       </div>
 
+      <!-- Bloc 2 : Options Mail, Cloud (Google Drive) & Clé IA -->
       <div class="card">
-        <h2>2. Tester l'impact d'un dépassement de prestation</h2>
+        <h2>2. Options d'Envoi (Mail, Cloud Drive &amp; Clé IA)</h2>
         <p class="card-desc">
-          Modifie l'heure de fin d'un service pour vérifier tout de suite si cela crée un <strong>repos réduit anormal (&le; 12h00)</strong>, un rattrapage obligatoire, une perte des 38h d'un RX ou des heures supplémentaires.
+          Enregistre ton adresse e-mail pour recevoir ou partager tes rapports PDF, ou envoie-les directement dans ton Cloud (Google Drive) via le partage natif Android / Apple.
         </p>
         <div class="form-row">
           <div class="field">
-            <label>Jour du mois</label>
-            <input type="number" id="rtDay" min="1" max="31" value="" placeholder="Ex: 14">
-          </div>
-          <div class="field">
-            <label>Nouvelle heure de fin</label>
-            <input type="text" id="rtNewEnd" value="" placeholder="Ex: 03:30">
-          </div>
-          <div class="field">
-            <label>Motif / Train (Traçabilité PDF)</label>
-            <input type="text" id="rtReason" value="" placeholder="Ex: Retard train 48120">
+            <label>Adresse e-mail destinataire (enregistrée)</label>
+            <input type="email" id="userEmailInput" value="" placeholder="Ex: mon.adresse@gmail.com" oninput="saveUserSettings()">
           </div>
         </div>
-        <button class="btn-red full-width" onclick="applyServiceOverrun()">
-          Vérifier l'impact sur les repos et heures supplémentaires
-        </button>
-        <div id="rtQuickFeedback" class="feedback-box"></div>
+        <div class="form-row">
+          <div class="field">
+            <label>Dossier Cloud cible automatique (Google Drive)</label>
+            <div id="cloudPathPreview" style="background:#0b1120; border:1px solid var(--border); padding:8px 10px; border-radius:6px; font-size:0.83rem; color:var(--accent); font-weight:700;">
+              Travail / 2026 / 11 - Novembre
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label>Clé API Gemini (Optionnel — pour lire les images ou PDF complexes)</label>
+            <input type="password" id="geminiApiKeyInput" value="" placeholder="Colle ta clé API Gemini ici..." oninput="saveUserSettings()">
+          </div>
+        </div>
+        <input type="hidden" id="cloudWebhookInput" value="">
+
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
+          <button type="button" class="btn-green full-width" onclick="sharePDFNativeCloudOrMail()">
+            ☁️ Envoyer PDF vers Cloud (Drive) / Mail (Partage natif)
+          </button>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <button type="button" class="btn-outline full-width" onclick="sendPDFBySavedEmail()">
+              ✉️ Préparer Mail
+            </button>
+            <button type="button" class="btn-outline full-width" onclick="downloadPDFDirect()">
+              💾 Enregistrer PDF
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </main>
 
+  <!-- ONGLET 2 : Synthèse -->
   <section id="tabPanel-2" class="tab-panel">
     <div class="card">
-      <h2>4. Synthèse — Intervalles, Repos, Week-ends &amp; Heures Supplémentaires</h2>
+      <h2>Synthèse — Intervalles, Repos, Week-ends &amp; Heures Supplémentaires</h2>
       <p class="card-desc">
         Vue consolidée en temps réel de tes prestations du mois, du respect des temps de repos et des seuils d'heures supplémentaires (sans calcul de primes).
       </p>
@@ -567,29 +625,60 @@
       </div>
 
       <div style="margin-top: 16px; display:flex; flex-wrap:wrap; gap:10px;">
-        <button class="btn-outline" onclick="switchTab(5)">🛡️ Voir le détail Audit &amp; Traçabilité</button>
-        <button class="btn-green" onclick="shareOrDownloadPDF()">📤 Partager PDF / Cloud</button>
+        <button type="button" class="btn-outline" onclick="switchTab(5)">🛡️ Voir le détail Audit &amp; Traçabilité</button>
+        <button type="button" class="btn-green" onclick="openExportModal()">📤 Exporter / Envoyer le PDF</button>
       </div>
     </div>
   </section>
 
+  <!-- ONGLET 3 : Compteurs élargis (Sans débordement, 100 % vierges par défaut) -->
   <section id="tabPanel-3" class="tab-panel">
     <div class="card">
-      <h2>3. Compteurs (Congés, Repos, Maladie, Récup)</h2>
+      <h2>Compteurs (Congés, Repos, Maladie, Récup)</h2>
       <p class="card-desc">
         Tous les compteurs sont vierges par défaut : saisis tes soldes de départ E500 ci-dessous, le décompte du mois se met à jour automatiquement.
       </p>
       <div class="counters-grid-wide">
-        <div class="field"><label>RX — Jours de repos</label><input type="number" id="cnt_RX" value="" placeholder="0" oninput="recalculateAll()"></div>
-        <div class="field"><label>NMBS — Congés SNCB</label><input type="number" id="cnt_NMBS" value="" placeholder="0" oninput="recalculateAll()"></div>
-        <div class="field"><label>REC — Heures de récup. (h)</label><input type="number" step="0.1" id="cnt_REC" value="" placeholder="0" oninput="recalculateAll()"></div>
-        <div class="field"><label>WKD — Repos de week-end</label><input type="number" id="cnt_WKD" value="" placeholder="0" oninput="recalculateAll()"></div>
-        <div class="field"><label>ZZ — Jours de maladie</label><input type="number" id="cnt_ZZ" value="" placeholder="0" oninput="recalculateAll()"></div>
-        <div class="field"><label>ZB — Congé sans solde 45+</label><input type="number" id="cnt_ZB" value="" placeholder="0" oninput="recalculateAll()"></div>
-        <div class="field"><label>BLH — Solde congés légaux</label><input type="number" id="cnt_BLH" value="" placeholder="0" oninput="recalculateAll()"></div>
-        <div class="field"><label>BELH — Congés extralégaux</label><input type="number" step="0.5" id="cnt_BELH" value="" placeholder="0" oninput="recalculateAll()"></div>
-        <div class="field"><label>BTH — Congés reportés N-1</label><input type="number" id="cnt_BTH" value="" placeholder="0" oninput="recalculateAll()"></div>
-        <div class="field"><label>BTULH — Congés non rémunérés</label><input type="number" id="cnt_BTULH" value="" placeholder="0" oninput="recalculateAll()"></div>
+        <div class="field">
+          <label>RX — Jours de repos</label>
+          <input type="number" id="cnt_RX" value="" placeholder="0" oninput="recalculateAll()">
+        </div>
+        <div class="field">
+          <label>NMBS — Congés SNCB</label>
+          <input type="number" id="cnt_NMBS" value="" placeholder="0" oninput="recalculateAll()">
+        </div>
+        <div class="field">
+          <label>REC — Heures de récup. (h)</label>
+          <input type="number" step="0.1" id="cnt_REC" value="" placeholder="0" oninput="recalculateAll()">
+        </div>
+        <div class="field">
+          <label>WKD — Repos de week-end</label>
+          <input type="number" id="cnt_WKD" value="" placeholder="0" oninput="recalculateAll()">
+        </div>
+        <div class="field">
+          <label>ZZ — Jours de maladie</label>
+          <input type="number" id="cnt_ZZ" value="" placeholder="0" oninput="recalculateAll()">
+        </div>
+        <div class="field">
+          <label>ZB — Congé sans solde 45+</label>
+          <input type="number" id="cnt_ZB" value="" placeholder="0" oninput="recalculateAll()">
+        </div>
+        <div class="field">
+          <label>BLH — Solde congés légaux</label>
+          <input type="number" id="cnt_BLH" value="" placeholder="0" oninput="recalculateAll()">
+        </div>
+        <div class="field">
+          <label>BELH — Congés extralégaux</label>
+          <input type="number" step="0.5" id="cnt_BELH" value="" placeholder="0" oninput="recalculateAll()">
+        </div>
+        <div class="field">
+          <label>BTH — Congés reportés N-1</label>
+          <input type="number" id="cnt_BTH" value="" placeholder="0" oninput="recalculateAll()">
+        </div>
+        <div class="field">
+          <label>BTULH — Congés non rémunérés</label>
+          <input type="number" id="cnt_BTULH" value="" placeholder="0" oninput="recalculateAll()">
+        </div>
       </div>
 
       <div id="counterSummaryBox" class="counter-summary"></div>
@@ -611,15 +700,16 @@
     </div>
   </section>
 
+  <!-- ONGLET 4 : Planning Mensuel E500 dédié -->
   <section id="tabPanel-4" class="tab-panel">
     <div class="card">
       <div class="section-head">
         <h2>Grille Mensuelle du Planning (E500)</h2>
         <div class="filter-bar">
-          <button class="filter-chip active" id="flt-all" onclick="setScheduleFilter('all')">Tous</button>
-          <button class="filter-chip" id="flt-bvts" onclick="setScheduleFilter('bvts')">Prestations</button>
-          <button class="filter-chip" id="flt-rxoo" onclick="setScheduleFilter('rxoo')">RX / OO</button>
-          <button class="filter-chip" id="flt-anom" onclick="setScheduleFilter('anom')">Anomalies</button>
+          <button type="button" class="filter-chip active" id="flt-all" onclick="setScheduleFilter('all')">Tous</button>
+          <button type="button" class="filter-chip" id="flt-bvts" onclick="setScheduleFilter('bvts')">Prestations</button>
+          <button type="button" class="filter-chip" id="flt-rxoo" onclick="setScheduleFilter('rxoo')">RX / OO</button>
+          <button type="button" class="filter-chip" id="flt-anom" onclick="setScheduleFilter('anom')">Anomalies</button>
         </div>
       </div>
       <div class="table-wrap">
@@ -633,8 +723,7 @@
               <th>Découcher (Lit)</th>
               <th>2e Presta (Lit 2)</th>
               <th>Trajet Hôtel (min)</th>
-              <th>Fin Prévue Initiale</th>
-              <th>Origine / Train / Note</th>
+              <th>Train / Note</th>
               <th>Durée Service</th>
               <th>Qualification</th>
               <th>Intervalle / Repos Avant</th>
@@ -647,20 +736,21 @@
     </div>
   </section>
 
+  <!-- ONGLET 5 : Audit des Intervalles/Repos, Traçabilité des Heures Sup. & Mémos Règles -->
   <section id="tabPanel-5" class="tab-panel">
     <div class="grid-two">
       <div class="card">
-        <h2>5. Contrôle des Intervalles, Repos 14h (&le;12h), Rattrapages &amp; RX (38h) vs OO</h2>
+        <h2>Contrôle des Intervalles, Repos 14h (&le;12h), Rattrapages &amp; RX (38h) vs OO</h2>
         <div class="log-list" id="restAuditList"></div>
       </div>
       <div class="card">
-        <h2>6. Traçabilité des Heures Supplémentaires (Jour / Semaine / Trimestre) &amp; Week-ends</h2>
+        <h2>Traçabilité des Heures Supplémentaires (Jour / Semaine / Trimestre) &amp; Week-ends</h2>
         <div class="log-list" id="traceabilityList"></div>
       </div>
     </div>
 
     <div class="card" style="margin-top: 14px;">
-      <h2>7. Mémo des Règles Appliquées (CP 226 / Lineas)</h2>
+      <h2>Mémo des Règles Appliquées (CP 226 / Lineas)</h2>
       <div class="rules-grid">
         <div class="rule-box">
           <strong>Repos Domicile (14h00) &amp; Seuil &le;12h00</strong>
@@ -683,39 +773,72 @@
   </section>
 </div>
 
-<div id="qrModal" class="qr-modal-overlay" onclick="if(event.target===this)closeShareQRModal()">
-  <div class="card" style="max-width:350px; text-align:center;">
+<!-- Fenêtre modale QR Code pour partager l'application 100 % vierge aux collègues -->
+<div id="qrModal" class="modal-overlay" onclick="if(event.target===this)closeShareQRModal()">
+  <div class="card" style="max-width:360px; text-align:center;">
     <h2>📱 Partager RB RailVigie</h2>
     <p class="card-desc">
       En scannant ce QR Code, le collègue ouvre l'application <strong>totalement vierge</strong> (noms, matricule, compteurs et planning remis à zéro).
     </p>
     <div id="qrContainer" class="qr-box"></div>
     <p id="qrUrlText" style="font-size:0.72rem; color:var(--muted); word-break:break-all; margin-bottom:12px;"></p>
-    <div style="display:flex; gap:8px;">
-      <button class="btn-outline full-width" onclick="copyShareLink()">Copier le lien</button>
-      <button class="btn-amber full-width" onclick="closeShareQRModal()">Fermer</button>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <button type="button" class="btn-green full-width" onclick="nativeShareAppLink()">📲 Partager le lien (WhatsApp / Mail / SMS)</button>
+      <div style="display:flex; gap:8px;">
+        <button type="button" class="btn-outline full-width" onclick="copyShareLink()">📋 Copier le lien</button>
+        <button type="button" class="btn-amber full-width" onclick="closeShareQRModal()">Fermer</button>
+      </div>
     </div>
   </div>
 </div>
 
+<!-- Fenêtre modale Export PDF (Cloud Drive / Mail / Téléphone) -->
+<div id="exportModal" class="modal-overlay" onclick="if(event.target===this)closeExportModal()">
+  <div class="card" style="max-width:380px;">
+    <h2>📤 Exporter le Rapport PDF</h2>
+    <p class="card-desc">
+      Choisis comment envoyer ou enregistrer ton rapport de conformité PDF :
+    </p>
+    <div style="background:#0b1120; border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:12px; font-size:0.78rem;">
+      <div style="color:var(--muted);">Dossier Cloud recommandé :</div>
+      <div id="modalCloudPath" style="color:var(--accent); font-weight:700; margin-top:2px;">Travail / 2026 / 11 - Novembre</div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <button type="button" class="btn-green full-width" onclick="sharePDFNativeCloudOrMail()">
+        ☁️ Partager vers Cloud (Google Drive) / Mail
+      </button>
+      <button type="button" class="btn-outline full-width" onclick="sendPDFBySavedEmail()">
+        ✉️ Ouvrir Mail (adresse enregistrée)
+      </button>
+      <button type="button" class="btn-outline full-width" onclick="downloadPDFDirect()">
+        💾 Télécharger sur le téléphone
+      </button>
+      <button type="button" class="btn-amber full-width" style="margin-top:4px;" onclick="closeExportModal()">
+        Fermer
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Barre d'onglets fixée EN BAS de l'application -->
 <nav class="bottom-tabs-nav" role="tablist">
-  <button class="bottom-tab-btn active" id="tabBtn-1" onclick="switchTab(1)">
+  <button type="button" class="bottom-tab-btn active" id="tabBtn-1" onclick="switchTab(1)">
     <span class="tab-icon">📅</span>
     <span class="tab-label">1. Période</span>
   </button>
-  <button class="bottom-tab-btn" id="tabBtn-2" onclick="switchTab(2)">
+  <button type="button" class="bottom-tab-btn" id="tabBtn-2" onclick="switchTab(2)">
     <span class="tab-icon">📊</span>
     <span class="tab-label">2. Synthèse</span>
   </button>
-  <button class="bottom-tab-btn" id="tabBtn-3" onclick="switchTab(3)">
+  <button type="button" class="bottom-tab-btn" id="tabBtn-3" onclick="switchTab(3)">
     <span class="tab-icon">🗂️</span>
     <span class="tab-label">3. Compteurs</span>
   </button>
-  <button class="bottom-tab-btn" id="tabBtn-4" onclick="switchTab(4)">
+  <button type="button" class="bottom-tab-btn" id="tabBtn-4" onclick="switchTab(4)">
     <span class="tab-icon">🚆</span>
     <span class="tab-label">4. Planning</span>
   </button>
-  <button class="bottom-tab-btn" id="tabBtn-5" onclick="switchTab(5)">
+  <button type="button" class="bottom-tab-btn" id="tabBtn-5" onclick="switchTab(5)">
     <span class="tab-icon">🛡️</span>
     <span class="tab-label">5. Audit</span>
     <span id="tabBadgeAnom" class="tab-badge" style="display:none;">0</span>
@@ -727,9 +850,24 @@ let scheduleData = [];
 let lastComputedReport = null;
 let currentScheduleFilter = 'all';
 
-const STORAGE_KEY = 'rb_railvigie_state_v4';
+const STORAGE_KEY = 'rb_railvigie_state_v5';
+const SETTINGS_KEY = 'rb_railvigie_settings_v5';
 const DAY_NAMES = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 const CODES = ['BVTS', 'RX', 'OO', 'ELH', 'REC', 'WKD', 'ZZ', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH', 'NMBS', '-'];
+const MONTH_FOLDERS = {
+  1: '01 - Janvier',
+  2: '02 - Févier',
+  3: '03 - Mars',
+  4: '04 - Avril',
+  5: '05 - Mai',
+  6: '06 - Juin',
+  7: '07 - Juillet',
+  8: '08 - Août',
+  9: '09 - Septembre',
+  10: '10 - Octobre',
+  11: '11 - Novembre',
+  12: '12 - Décembre'
+};
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -737,22 +875,34 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// Initialisation de PDF.js Worker si disponible
+if (typeof window.pdfjsLib !== 'undefined') {
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+// 1. Navigation par Onglets (Barre du bas)
 function switchTab(tabIndex) {
   for (let i = 1; i <= 5; i++) {
-    const btn = document.getElementById(`tabBtn-${i}`);
-    const panel = document.getElementById(`tabPanel-${i}`);
+    const btn = document.getElementById('tabBtn-' + i);
+    const panel = document.getElementById('tabPanel-' + i);
     if (btn && panel) {
-      btn.classList.toggle('active', i === tabIndex);
-      panel.classList.toggle('active', i === tabIndex);
+      if (i === tabIndex) {
+        btn.classList.add('active');
+        panel.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+        panel.classList.remove('active');
+      }
     }
   }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+// 2. Filtres rapides de la grille Planning (Onglet 4)
 function setScheduleFilter(filterType) {
   currentScheduleFilter = filterType;
   ['all', 'bvts', 'rxoo', 'anom'].forEach(k => {
-    const el = document.getElementById(`flt-${k}`);
+    const el = document.getElementById('flt-' + k);
     if (el) el.classList.toggle('active', k === filterType);
   });
   applyRowFilter();
@@ -760,7 +910,7 @@ function setScheduleFilter(filterType) {
 
 function applyRowFilter() {
   scheduleData.forEach(r => {
-    const tr = document.getElementById(`row-${r.day}`);
+    const tr = document.getElementById('row-' + r.day);
     if (!tr) return;
     const isAnom = tr.classList.contains('row-anomaly');
     let show = true;
@@ -771,6 +921,42 @@ function applyRowFilter() {
   });
 }
 
+// 3. Sauvegarde des options (Email, Clé Gemini, Webhook Cloud)
+function saveUserSettings() {
+  try {
+    const settings = {
+      email: (document.getElementById('userEmailInput').value || '').trim(),
+      geminiKey: (document.getElementById('geminiApiKeyInput').value || '').trim(),
+      cloudWebhook: (document.getElementById('cloudWebhookInput').value || '').trim()
+    };
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    updateCloudPathPreview();
+  } catch (e) {}
+}
+
+function loadUserSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    if (s.email && document.getElementById('userEmailInput')) document.getElementById('userEmailInput').value = s.email;
+    if (s.geminiKey && document.getElementById('geminiApiKeyInput')) document.getElementById('geminiApiKeyInput').value = s.geminiKey;
+    if (s.cloudWebhook && document.getElementById('cloudWebhookInput')) document.getElementById('cloudWebhookInput').value = s.cloudWebhook;
+  } catch (e) {}
+}
+
+function updateCloudPathPreview() {
+  const m = parseInt(document.getElementById('monthSelect').value || '10', 10);
+  const y = document.getElementById('yearInput').value || '2026';
+  const folderName = MONTH_FOLDERS[m] || '10 - Octobre';
+  const pathText = 'Travail / ' + y + ' / ' + folderName;
+  const el1 = document.getElementById('cloudPathPreview');
+  const el2 = document.getElementById('modalCloudPath');
+  if (el1) el1.textContent = pathText;
+  if (el2) el2.textContent = pathText;
+}
+
+// 4. Partage QR Code & Lien 100 % vierge
 function getCleanShareUrl() {
   const base = window.location.origin + window.location.pathname;
   return base + '?vierge=1';
@@ -782,36 +968,80 @@ function openShareQRModal() {
   container.innerHTML = '';
   document.getElementById('qrUrlText').textContent = shareUrl;
 
+  let qrCreated = false;
   if (typeof QRCode !== 'undefined') {
-    new QRCode(container, {
-      text: shareUrl, width: 200, height: 200, colorDark: '#0f172a', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M
-    });
-  } else {
+    try {
+      new QRCode(container, {
+        text: shareUrl,
+        width: 200,
+        height: 200,
+        colorDark: '#0f172a',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+      qrCreated = true;
+    } catch (e) {
+      qrCreated = false;
+    }
+  }
+  if (!qrCreated) {
     const img = document.createElement('img');
     img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=4&data=' + encodeURIComponent(shareUrl);
-    img.style.width = '200px'; img.style.height = '200px';
+    img.alt = 'QR Code';
+    img.style.width = '200px';
+    img.style.height = '200px';
     container.appendChild(img);
   }
   document.getElementById('qrModal').style.display = 'flex';
 }
 
-function closeShareQRModal() { document.getElementById('qrModal').style.display = 'none'; }
+function closeShareQRModal() {
+  document.getElementById('qrModal').style.display = 'none';
+}
 
 function copyShareLink() {
   const shareUrl = getCleanShareUrl();
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(shareUrl).then(() => { alert('Lien vierge copié : ' + shareUrl); }).catch(() => {});
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      alert('Lien vierge copié :\n' + shareUrl);
+    }).catch(() => {
+      prompt('Copie ce lien :', shareUrl);
+    });
+  } else {
+    prompt('Copie ce lien :', shareUrl);
   }
 }
 
+async function nativeShareAppLink() {
+  const shareUrl = getCleanShareUrl();
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: 'RB RailVigie (Version Vierge)',
+        text: 'Voici l\'application RB RailVigie (version 100 % vierge) :',
+        url: shareUrl
+      });
+      return;
+    } catch (e) {}
+  }
+  copyShareLink();
+}
+
+// 5. Reconnaissance souple du conducteur ("Rémy Brasseur" <-> "Rémy Marcel L BRASSEUR")
 function normalizeStr(str) {
-  return (str || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9\s]/g, ' ').trim();
+  return (str || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9\s]/g, ' ')
+    .trim();
 }
 
 function checkDriverMatch() {
   const rawInput = document.getElementById('driverInput').value;
   const rawTarget = document.getElementById('e500FullName').value;
-  const query = normalizeStr(rawInput), target = normalizeStr(rawTarget);
+  const query = normalizeStr(rawInput);
+  const target = normalizeStr(rawTarget);
   const infoEl = document.getElementById('driverMatchInfo');
 
   if (!query) {
@@ -822,14 +1052,18 @@ function checkDriverMatch() {
 
   const isRemyShort = (query === 'REMY BRASSEUR' || query === 'BRASSEUR REMY');
   if (isRemyShort && (!target || (target.includes('REMY') && target.includes('BRASSEUR')))) {
-    if (!rawTarget) document.getElementById('e500FullName').value = 'Rémy Marcel L BRASSEUR';
+    if (!rawTarget) {
+      document.getElementById('e500FullName').value = 'Rémy Marcel L BRASSEUR';
+    }
     infoEl.textContent = 'Identité reconnue : "Rémy Brasseur" ➔ "Rémy Marcel L BRASSEUR".';
     infoEl.style.color = 'var(--green)';
     return true;
   }
 
   if (!target) {
-    infoEl.textContent = `Conducteur actif : ${rawInput}`; infoEl.style.color = 'var(--green)'; return true;
+    infoEl.textContent = 'Conducteur actif : ' + rawInput;
+    infoEl.style.color = 'var(--green)';
+    return true;
   }
 
   const queryTokens = query.split(/\s+/).filter(Boolean);
@@ -837,20 +1071,22 @@ function checkDriverMatch() {
   const allMatched = queryTokens.every(qt => targetTokens.some(tt => tt.includes(qt) || qt.includes(tt)));
 
   if (allMatched) {
-    infoEl.textContent = `Identité reconnue : "${rawInput}" correspond à "${document.getElementById('e500FullName').value}".`;
+    infoEl.textContent = 'Identité reconnue : "' + rawInput + '" correspond à "' + document.getElementById('e500FullName').value + '".';
     infoEl.style.color = 'var(--green)';
   } else {
-    infoEl.textContent = `Attention : "${rawInput}" ne correspond pas à "${document.getElementById('e500FullName').value}".`;
+    infoEl.textContent = 'Attention : "' + rawInput + '" ne correspond pas à "' + document.getElementById('e500FullName').value + '".';
     infoEl.style.color = 'var(--red)';
   }
   return allMatched;
 }
 
+// 6. Fonctions utilitaires de temps et dates
 function parseTimeToMin(str) {
   if (!str || typeof str !== 'string') return null;
-  const match = str.trim().match(/^(\d{1,2})[:hH](\d{2})$/);
+  const match = str.trim().match(/^(\d{1,2})[:hH.](\d{2})$/);
   if (!match) return null;
-  const h = parseInt(match[1], 10), m = parseInt(match[2], 10);
+  const h = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10);
   if (h < 0 || h > 29 || m < 0 || m > 59) return null;
   return h * 60 + m;
 }
@@ -858,33 +1094,52 @@ function parseTimeToMin(str) {
 function formatMinToHHMM(totalMin) {
   const sign = totalMin < 0 ? '-' : '';
   const abs = Math.round(Math.abs(totalMin));
-  return `${sign}${Math.floor(abs / 60)}h${String(abs % 60).padStart(2, '0')}`;
+  return sign + Math.floor(abs / 60) + 'h' + String(abs % 60).padStart(2, '0');
 }
 
-function getDaysInMonth(month, year) { return new Date(year, month, 0).getDate(); }
-function getDayOfWeek(year, month, day) { return new Date(year, month - 1, day).getDay(); }
+function getDaysInMonth(month, year) {
+  return new Date(year, month, 0).getDate();
+}
+
+function getDayOfWeek(year, month, day) {
+  return new Date(year, month - 1, day).getDay();
+}
 
 function getISOWeekKey(year, month, day) {
   const d = new Date(Date.UTC(year, month - 1, day));
   const dayNum = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return `${d.getUTCFullYear()}-S${Math.ceil((((d - yearStart) / 86400000) + 1) / 7)}`;
+  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return d.getUTCFullYear() + '-S' + String(weekNo).padStart(2, '0');
 }
 
 function createBlankSchedule(month, year) {
   const days = getDaysInMonth(month, year);
   const arr = [];
   for (let d = 1; d <= days; d++) {
-    arr.push({ day: d, code: '-', start: '', end: '', lit: 'none', start2: '', end2: '', trajetMin: 0, plannedEndBeforeRT: '', note: '' });
+    arr.push({
+      day: d,
+      code: '-',
+      start: '',
+      end: '',
+      lit: 'none',
+      start2: '',
+      end2: '',
+      trajetMin: 0,
+      note: ''
+    });
   }
   return arr;
 }
 
+// Remise à zéro 100 % vierge (Identité, Trimestre, Compteurs et Grille des 31 jours)
 function resetBlankMonth() {
   try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
   const now = new Date();
-  const cm = now.getMonth() + 1, cy = now.getFullYear();
+  const cm = now.getMonth() + 1;
+  const cy = now.getFullYear();
+
   document.getElementById('monthSelect').value = String(cm);
   document.getElementById('yearInput').value = String(cy);
   document.getElementById('driverInput').value = '';
@@ -892,18 +1147,21 @@ function resetBlankMonth() {
   document.getElementById('driverMatricule').value = '';
   document.getElementById('prevQuarterHours').value = '';
   document.getElementById('quarterWeeks').value = '13';
-  document.getElementById('rtDay').value = '';
-  document.getElementById('rtNewEnd').value = '';
-  document.getElementById('rtReason').value = '';
-  document.getElementById('rtQuickFeedback').innerHTML = '';
 
   ['RX', 'NMBS', 'REC', 'WKD', 'ZZ', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH'].forEach(c => {
     const el = document.getElementById('cnt_' + c);
     if (el) el.value = '';
   });
 
+  const statusEl = document.getElementById('importStatusMsg');
+  if (statusEl) {
+    statusEl.textContent = 'Sélectionne un fichier PDF E500 ou une image de ta ligne.';
+    statusEl.style.color = 'var(--muted)';
+  }
+
   scheduleData = createBlankSchedule(cm, cy);
   checkDriverMatch();
+  updateCloudPathPreview();
   renderTable();
   recalculateAll();
 }
@@ -913,9 +1171,15 @@ function rebuildMonthChange() {
   const y = parseInt(document.getElementById('yearInput').value, 10);
   const days = getDaysInMonth(m, y);
   while (scheduleData.length < days) {
-    scheduleData.push({ day: scheduleData.length + 1, code: '-', start: '', end: '', lit: 'none', start2: '', end2: '', trajetMin: 0, plannedEndBeforeRT: '', note: '' });
+    scheduleData.push({
+      day: scheduleData.length + 1,
+      code: '-', start: '', end: '', lit: 'none', start2: '', end2: '', trajetMin: 0, note: ''
+    });
   }
-  if (scheduleData.length > days) scheduleData = scheduleData.slice(0, days);
+  if (scheduleData.length > days) {
+    scheduleData = scheduleData.slice(0, days);
+  }
+  updateCloudPathPreview();
   renderTable();
   recalculateAll();
 }
@@ -926,34 +1190,47 @@ function loadOctoberDemo() {
   document.getElementById('e500FullName').value = 'Rémy Marcel L BRASSEUR';
   document.getElementById('driverMatricule').value = '899008349';
   document.getElementById('cnt_RX').value = '118';
+  document.getElementById('cnt_NMBS').value = '0';
   document.getElementById('cnt_REC').value = '27.2';
   document.getElementById('cnt_WKD').value = '2';
+  document.getElementById('cnt_ZZ').value = '0';
   document.getElementById('cnt_ZB').value = '10';
+  document.getElementById('cnt_BLH').value = '0';
   document.getElementById('cnt_BELH').value = '6.5';
+  document.getElementById('cnt_BTH').value = '0';
+  document.getElementById('cnt_BTULH').value = '0';
   checkDriverMatch();
+  updateCloudPathPreview();
 
   scheduleData = createBlankSchedule(10, 2026);
   const preset = {
     1:  { code: 'BVTS', start: '13:00', end: '22:35' },
     2:  { code: 'BVTS', start: '13:00', end: '22:00' },
-    3:  { code: 'OO' }, 4: { code: 'RX' },
+    3:  { code: 'OO' },
+    4:  { code: 'RX' },
     5:  { code: 'BVTS', start: '08:00', end: '15:36' },
     6:  { code: 'BVTS', start: '08:00', end: '15:36' },
     7:  { code: 'BVTS', start: '08:00', end: '15:36' },
     8:  { code: 'BVTS', start: '08:00', end: '15:36' },
     9:  { code: 'BVTS', start: '08:00', end: '15:36' },
-    10: { code: 'RX' }, 11: { code: 'RX' }, 12: { code: 'RX' },
+    10: { code: 'RX' },
+    11: { code: 'RX' },
+    12: { code: 'RX' },
     13: { code: 'BVTS', start: '13:00', end: '22:30' },
     14: { code: 'BVTS', start: '13:00', end: '22:30' },
     15: { code: 'BVTS', start: '15:55', end: '00:55', lit: 'aller', trajetMin: 40 },
     16: { code: 'BVTS', start: '18:20', end: '01:40', lit: 'retour', trajetMin: 35 },
-    17: { code: 'OO' }, 18: { code: 'RX' }, 19: { code: 'RX' },
+    17: { code: 'OO' },
+    18: { code: 'RX' },
+    19: { code: 'RX' },
     20: { code: 'BVTS', start: '12:00', end: '21:45' },
     21: { code: 'BVTS', start: '17:25', end: '01:40' },
     22: { code: 'BVTS', start: '15:20', end: '00:15', lit: 'aller', trajetMin: 30 },
     23: { code: 'BVTS', start: '13:55', end: '20:50', lit: 'retour', trajetMin: 25 },
-    24: { code: 'RX' }, 25: { code: 'RX' },
-    26: { code: 'ELH' }, 27: { code: 'ELH' },
+    24: { code: 'RX' },
+    25: { code: 'RX' },
+    26: { code: 'ELH' },
+    27: { code: 'ELH' },
     28: { code: 'BVTS', start: '18:15', end: '01:40' },
     29: { code: 'BVTS', start: '15:20', end: '00:15', lit: 'aller', trajetMin: 30 },
     30: { code: 'BVTS', start: '13:48', end: '20:50', lit: 'retour', trajetMin: 25 },
@@ -967,7 +1244,6 @@ function loadOctoberDemo() {
       row.end = p.end || '';
       row.lit = p.lit || 'none';
       row.trajetMin = p.trajetMin || 0;
-      row.plannedEndBeforeRT = p.end || '';
     }
   });
   renderTable();
@@ -975,6 +1251,7 @@ function loadOctoberDemo() {
   switchTab(4);
 }
 
+// 7. Rendu de la Grille Mensuelle (sans la colonne inutile du Point 2)
 function renderTable() {
   const tbody = document.getElementById('scheduleBody');
   const m = parseInt(document.getElementById('monthSelect').value, 10);
@@ -982,47 +1259,37 @@ function renderTable() {
 
   tbody.innerHTML = scheduleData.map((r, idx) => {
     const dow = getDayOfWeek(y, m, r.day);
-    const dayLabel = `${String(r.day).padStart(2, '0')} (${DAY_NAMES[dow]})`;
+    const dayLabel = String(r.day).padStart(2, '0') + ' (' + DAY_NAMES[dow] + ')';
     const rowClass = r.code === 'BVTS' ? 'row-bvts' : (r.code === 'RX' ? 'row-rx' : (r.code === 'OO' ? 'row-oo' : ''));
+    const opts = CODES.map(c => '<option value="' + c + '" ' + (r.code === c ? 'selected' : '') + '>' + c + '</option>').join('');
 
-    return `
-      <tr id="row-${r.day}" class="${rowClass}">
-        <td style="font-weight:700;">${dayLabel}</td>
-        <td>
-          <select onchange="updateCell(${idx}, 'code', this.value)">
-            ${CODES.map(c => `<option value="${c}" ${r.code === c ? 'selected' : ''}>${c}</option>`).join('')}
-          </select>
-        </td>
-        <td><input class="time-input" type="text" value="${r.start}" placeholder="HH:MM" onchange="updateCell(${idx}, 'start', this.value)"></td>
-        <td><input class="time-input" type="text" value="${r.end}" placeholder="HH:MM" onchange="updateCell(${idx}, 'end', this.value)"></td>
-        <td>
-          <select onchange="updateCell(${idx}, 'lit', this.value)">
-            <option value="none" ${r.lit === 'none' ? 'selected' : ''}>-</option>
-            <option value="aller" ${r.lit === 'aller' ? 'selected' : ''}>🛏️ 1er Lit (Aller Hôtel)</option>
-            <option value="retour" ${r.lit === 'retour' ? 'selected' : ''}>🛏️ 2e Lit (Retour Hôtel)</option>
-            <option value="2" ${r.lit === '2' ? 'selected' : ''}>🛏️² Lit 2 (Même jour)</option>
-          </select>
-        </td>
-        <td>
-          <input class="time-input" type="text" value="${r.start2 ? r.start2 + '-' + r.end2 : ''}" placeholder="HH:MM-HH:MM" onchange="updateSecondShift(${idx}, this.value)">
-        </td>
-        <td><input class="num-input" type="number" min="0" value="${r.trajetMin || 0}" onchange="updateCell(${idx}, 'trajetMin', parseInt(this.value||0,10))"></td>
-        <td><input class="time-input" type="text" value="${r.plannedEndBeforeRT}" placeholder="HH:MM" onchange="updateCell(${idx}, 'plannedEndBeforeRT', this.value)"></td>
-        <td><input type="text" style="min-width:120px;" value="${r.note || ''}" placeholder="Train / Motif" onchange="updateCell(${idx}, 'note', this.value)"></td>
-        <td id="cell-dur-${r.day}">-</td>
-        <td id="cell-qual-${r.day}">-</td>
-        <td id="cell-rest-${r.day}">-</td>
-        <td id="cell-flags-${r.day}">-</td>
-      </tr>
-    `;
+    return '<tr id="row-' + r.day + '" class="' + rowClass + '">' +
+      '<td style="font-weight:700;">' + dayLabel + '</td>' +
+      '<td><select onchange="updateCell(' + idx + ', \'code\', this.value)">' + opts + '</select></td>' +
+      '<td><input class="time-input" type="text" value="' + (r.start || '') + '" placeholder="HH:MM" onchange="updateCell(' + idx + ', \'start\', this.value)"></td>' +
+      '<td><input class="time-input" type="text" value="' + (r.end || '') + '" placeholder="HH:MM" onchange="updateCell(' + idx + ', \'end\', this.value)"></td>' +
+      '<td><select onchange="updateCell(' + idx + ', \'lit\', this.value)">' +
+        '<option value="none" ' + (r.lit === 'none' ? 'selected' : '') + '>-</option>' +
+        '<option value="aller" ' + (r.lit === 'aller' ? 'selected' : '') + '>🛏️ 1er Lit (Aller)</option>' +
+        '<option value="retour" ' + (r.lit === 'retour' ? 'selected' : '') + '>🛏️ 2e Lit (Retour)</option>' +
+        '<option value="2" ' + (r.lit === '2' ? 'selected' : '') + '>🛏️² Lit 2 (Même j.)</option>' +
+      '</select></td>' +
+      '<td><input class="time-input" type="text" value="' + (r.start2 ? r.start2 + '-' + r.end2 : '') + '" placeholder="HH:MM-HH:MM" onchange="updateSecondShift(' + idx + ', this.value)"></td>' +
+      '<td><input class="num-input" type="number" min="0" value="' + (r.trajetMin || 0) + '" onchange="updateCell(' + idx + ', \'trajetMin\', parseInt(this.value||0,10))"></td>' +
+      '<td><input type="text" style="min-width:110px;" value="' + (r.note || '') + '" placeholder="Train / Note" onchange="updateCell(' + idx + ', \'note\', this.value)"></td>' +
+      '<td id="cell-dur-' + r.day + '">-</td>' +
+      '<td id="cell-qual-' + r.day + '">-</td>' +
+      '<td id="cell-rest-' + r.day + '">-</td>' +
+      '<td id="cell-flags-' + r.day + '">-</td>' +
+    '</tr>';
   }).join('');
 }
 
 function updateCell(idx, field, val) {
   scheduleData[idx][field] = val;
   if (field === 'code') {
-    const tr = document.getElementById(`row-${scheduleData[idx].day}`);
-    tr.className = val === 'BVTS' ? 'row-bvts' : (val === 'RX' ? 'row-rx' : (val === 'OO' ? 'row-oo' : ''));
+    const tr = document.getElementById('row-' + scheduleData[idx].day);
+    if (tr) tr.className = val === 'BVTS' ? 'row-bvts' : (val === 'RX' ? 'row-rx' : (val === 'OO' ? 'row-oo' : ''));
   }
   recalculateAll();
 }
@@ -1033,17 +1300,25 @@ function updateSecondShift(idx, val) {
     scheduleData[idx].start2 = parts[0].trim();
     scheduleData[idx].end2 = parts[1].trim();
   } else {
-    scheduleData[idx].start2 = ''; scheduleData[idx].end2 = '';
+    scheduleData[idx].start2 = '';
+    scheduleData[idx].end2 = '';
   }
   recalculateAll();
 }
 
+// 8. Moteur de Calcul Réglementaire CP 226
 function recalculateAll() {
   const m = parseInt(document.getElementById('monthSelect').value, 10);
   const y = parseInt(document.getElementById('yearInput').value, 10);
 
-  let totalWorkMin = 0, totalSatMin = 0, totalSunMin = 0, totalDailyOTMin = 0;
-  let serviceCount = 0, hotelCount = 0, reducedRestCount = 0, abnormalRest12Count = 0;
+  let totalWorkMin = 0;
+  let totalSatMin = 0;
+  let totalSunMin = 0;
+  let totalDailyOTMin = 0;
+  let serviceCount = 0;
+  let hotelCount = 0;
+  let reducedRestCount = 0;
+  let abnormalRest12Count = 0;
 
   const weeklyMinutes = {};
   const traceabilityEvents = [];
@@ -1055,101 +1330,290 @@ function recalculateAll() {
     const weekKey = getISOWeekKey(y, m, r.day);
     if (!weeklyMinutes[weekKey]) weeklyMinutes[weekKey] = { min: 0, days: [] };
 
-    let dayWorkMin = 0, qualBadge = '-';
+    let dayWorkMin = 0;
+    let qualBadge = '-';
     const flags = [];
-    const sMin = parseTimeToMin(r.start), eMin = parseTimeToMin(r.end);
 
-    if (r.code === 'BVTS' && sMin !== null && eMin !== null) {
+    const startMin = parseTimeToMin(r.start);
+    const endMin = parseTimeToMin(r.end);
+
+    if (r.code === 'BVTS' && startMin !== null && endMin !== null) {
       serviceCount++;
-      const absStart = (r.day - 1) * 1440 + sMin;
-      const absEnd = eMin >= sMin ? (r.day - 1) * 1440 + eMin : r.day * 1440 + eMin;
-      let dur1 = absEnd - absStart, extraTravelMin = 0;
+      const absStart = (r.day - 1) * 1440 + startMin;
+      const absEnd = endMin >= startMin
+        ? (r.day - 1) * 1440 + endMin
+        : r.day * 1440 + endMin;
+
+      const dur1 = absEnd - absStart;
+      let extraTravelMin = 0;
 
       if (r.lit === 'aller') {
         hotelCount++;
-        if (r.trajetMin > 30) { extraTravelMin = r.trajetMin - 30; flags.push(`<span class="badge b-info">+${extraTravelMin}m trajet</span>`); }
+        if (r.trajetMin > 30) {
+          extraTravelMin = r.trajetMin - 30;
+          flags.push('<span class="badge b-info">+' + extraTravelMin + 'm trajet aller</span>');
+        }
       } else if (r.lit === 'retour' && r.trajetMin > 0) {
-        extraTravelMin = r.trajetMin; flags.push(`<span class="badge b-info">+${extraTravelMin}m trajet</span>`);
-      } else if (r.lit === '2') { hotelCount++; if (r.trajetMin > 0) extraTravelMin = r.trajetMin; }
+        extraTravelMin = r.trajetMin;
+        flags.push('<span class="badge b-info">+' + extraTravelMin + 'm trajet retour</span>');
+      } else if (r.lit === '2') {
+        hotelCount++;
+        if (r.trajetMin > 0) extraTravelMin = r.trajetMin;
+      }
 
       dayWorkMin += dur1 + extraTravelMin;
-      activeShifts.push({ day: r.day, weekKey, absStart, absEnd, lit: r.lit, startStr: r.start, endStr: r.end });
+
+      activeShifts.push({
+        day: r.day,
+        weekKey: weekKey,
+        absStart: absStart,
+        absEnd: absEnd,
+        lit: r.lit,
+        startStr: r.start,
+        endStr: r.end
+      });
+
+      if (r.lit === '2') {
+        const s2 = parseTimeToMin(r.start2);
+        const e2 = parseTimeToMin(r.end2);
+        if (s2 !== null && e2 !== null) {
+          let absS2 = (r.day - 1) * 1440 + s2;
+          if (absS2 < absEnd) absS2 += 1440;
+          let absE2 = e2 >= s2 ? (r.day - 1) * 1440 + e2 : r.day * 1440 + e2;
+          if (absE2 < absS2) absE2 += 1440;
+
+          const hotelRestSameDay = absS2 - absEnd;
+          if (hotelRestSameDay < 9 * 60) {
+            restAuditEvents.push({
+              level: 'err',
+              day: r.day,
+              title: 'Jour ' + r.day + ' — INFRACTION Découcher Lit 2 < 9h00 (' + formatMinToHHMM(hotelRestSameDay) + ')',
+              detail: 'Coupure hôtel le même jour entre ' + r.end + ' et ' + r.start2 + ' inférieure au minimum de 9h00.'
+            });
+            flags.push('<span class="badge b-err">Hôtel ' + formatMinToHHMM(hotelRestSameDay) + ' &lt;9h</span>');
+          } else {
+            flags.push('<span class="badge b-info">Lit 2 : Hôtel ' + formatMinToHHMM(hotelRestSameDay) + '</span>');
+          }
+
+          dayWorkMin += (absE2 - absS2);
+          activeShifts.push({
+            day: r.day,
+            weekKey: weekKey,
+            absStart: absS2,
+            absEnd: absE2,
+            lit: 'retour',
+            startStr: r.start2,
+            endStr: r.end2
+          });
+        }
+      }
 
       if (dow === 6) {
-        totalSatMin += dayWorkMin; qualBadge = `<span class="badge b-info">100% Samedi</span>`;
+        totalSatMin += dayWorkMin;
+        qualBadge = '<span class="badge b-info">100% Samedi</span>';
+        traceabilityEvents.push({
+          type: 'WEEKEND',
+          day: r.day,
+          label: 'Jour ' + r.day + ' (Sam) : Heures Samedi (' + formatMinToHHMM(dayWorkMin) + ')',
+          detail: 'Prestation débutée le samedi à ' + r.start + ' (fin ' + r.end + ') ➔ 100 % comptabilisé en Samedi.'
+        });
       } else if (dow === 0) {
-        totalSunMin += dayWorkMin; qualBadge = `<span class="badge b-info">100% Dimanche</span>`;
+        totalSunMin += dayWorkMin;
+        qualBadge = '<span class="badge b-info">100% Dimanche</span>';
+        traceabilityEvents.push({
+          type: 'WEEKEND',
+          day: r.day,
+          label: 'Jour ' + r.day + ' (Dim) : Heures Dimanche (' + formatMinToHHMM(dayWorkMin) + ')',
+          detail: 'Prestation débutée le dimanche à ' + r.start + ' (fin ' + r.end + ') ➔ 100 % comptabilisé en Dimanche.'
+        });
+      } else if (dow === 5 && endMin < startMin) {
+        qualBadge = '<span class="badge b-ok">Ven➔Sam (100% Sem)</span>';
       } else {
-        qualBadge = `<span class="badge b-ok">Semaine</span>`;
+        qualBadge = '<span class="badge b-ok">Semaine</span>';
       }
 
       if (dayWorkMin > 600) {
-        const otDay = dayWorkMin - 600; totalDailyOTMin += otDay;
-        flags.push(`<span class="badge b-err">HS Jour +${formatMinToHHMM(otDay)}</span>`);
+        const otDay = dayWorkMin - 600;
+        totalDailyOTMin += otDay;
+        flags.push('<span class="badge b-err">HS Jour +' + formatMinToHHMM(otDay) + '</span>');
+        traceabilityEvents.push({
+          type: 'OT_DAY',
+          day: r.day,
+          label: 'Jour ' + r.day + ' : Heures Sup. Journalières (+' + formatMinToHHMM(otDay) + ')',
+          detail: 'Durée totale ' + formatMinToHHMM(dayWorkMin) + ' (> 10h00) sur le service ' + r.start + '-' + r.end + '. ' + (r.note ? 'Note : ' + r.note : '')
+        });
       }
-    } else if (r.code === 'RX') { qualBadge = `<span class="badge b-info">Repos RX</span>`; }
-    else if (r.code === 'OO') { qualBadge = `<span class="badge b-warn">Alternement OO</span>`; }
-    else if (r.code !== '-') { qualBadge = `<span class="badge b-ok">${r.code}</span>`; }
+    } else if (r.code === 'RX') {
+      qualBadge = '<span class="badge b-info">Repos RX</span>';
+    } else if (r.code === 'OO') {
+      qualBadge = '<span class="badge b-warn">Alternement OO</span>';
+    } else if (r.code !== '-') {
+      qualBadge = '<span class="badge b-ok">' + r.code + '</span>';
+    }
 
     totalWorkMin += dayWorkMin;
     weeklyMinutes[weekKey].min += dayWorkMin;
     if (dayWorkMin > 0) weeklyMinutes[weekKey].days.push(r.day);
 
-    const durC = document.getElementById(`cell-dur-${r.day}`);
-    const qualC = document.getElementById(`cell-qual-${r.day}`);
-    const flagsC = document.getElementById(`cell-flags-${r.day}`);
-    const restC = document.getElementById(`cell-rest-${r.day}`);
-    if (durC) durC.textContent = dayWorkMin > 0 ? formatMinToHHMM(dayWorkMin) : '-';
-    if (qualC) qualC.innerHTML = qualBadge;
-    if (flagsC) flagsC.innerHTML = flags.length ? flags.join(' ') : '-';
-    if (restC) restC.innerHTML = '-';
+    const durCell = document.getElementById('cell-dur-' + r.day);
+    const qualCell = document.getElementById('cell-qual-' + r.day);
+    const flagsCell = document.getElementById('cell-flags-' + r.day);
+    const restCell = document.getElementById('cell-rest-' + r.day);
+    if (durCell) durCell.textContent = dayWorkMin > 0 ? formatMinToHHMM(dayWorkMin) : '-';
+    if (qualCell) qualCell.innerHTML = qualBadge;
+    if (flagsCell) flagsCell.innerHTML = flags.length ? flags.join(' ') : '-';
+    if (restCell) restCell.innerHTML = '-';
+    const rowEl = document.getElementById('row-' + r.day);
+    if (rowEl) rowEl.classList.remove('row-anomaly');
   });
 
-  let pendingDebt = 0, pendingDay = null;
-  const wRed = {};
-  for (let i = 1; i < activeShifts.length; i++) {
-    const prev = activeShifts[i - 1], curr = activeShifts[i];
-    const restMin = curr.absStart - prev.absEnd;
-    const restC = document.getElementById(`cell-rest-${curr.day}`);
-    const betweenDays = scheduleData.filter(d => d.day > prev.day && d.day < curr.day);
-    const rxCnt = betweenDays.filter(d => d.code === 'RX').length;
-    const ooCnt = betweenDays.filter(d => d.code === 'OO').length;
-    const isHotel = (prev.lit === 'aller') && (curr.lit === 'retour');
+  // Contrôle des intervalles entre prestations (14h, <=12h, rattrapage, hôtel 9h, RX 38h/62h vs OO)
+  let pendingHomeRestDebtMin = 0;
+  let pendingDebtOriginDay = null;
+  const weeklyReductionsCount = {};
 
-    if (isHotel) {
+  for (let i = 1; i < activeShifts.length; i++) {
+    const prev = activeShifts[i - 1];
+    const curr = activeShifts[i];
+    const restMin = curr.absStart - prev.absEnd;
+    const restCell = document.getElementById('cell-rest-' + curr.day);
+    const rowEl = document.getElementById('row-' + curr.day);
+
+    const betweenDays = scheduleData.filter(d => d.day > prev.day && d.day < curr.day);
+    const rxCount = betweenDays.filter(d => d.code === 'RX').length;
+    const ooCount = betweenDays.filter(d => d.code === 'OO').length;
+    const isHotelRest = (prev.lit === 'aller') && (curr.lit === 'retour');
+
+    if (isHotelRest) {
       if (restMin < 9 * 60) {
-        if (restC) restC.innerHTML = `<span class="badge b-err">Hôtel <9h</span>`;
-        restAuditEvents.push({ level: 'err', day: curr.day, title: `Jour ${curr.day} — Hôtel < 9h00 (${formatMinToHHMM(restMin)})`, detail: `Minimum hôtel non respecté.` });
+        if (restCell) restCell.innerHTML = '<span class="badge b-err">Hôtel ' + formatMinToHHMM(restMin) + ' (&lt;9h!)</span>';
+        if (rowEl) rowEl.classList.add('row-anomaly');
+        restAuditEvents.push({
+          level: 'err',
+          day: curr.day,
+          title: 'Jour ' + curr.day + ' — INFRACTION Repos Hôtel < 9h00 (' + formatMinToHHMM(restMin) + ')',
+          detail: 'Fin le J' + prev.day + ' à ' + prev.endStr + ', reprise le J' + curr.day + ' à ' + curr.startStr + '. Minimum réglementaire à l\'hôtel : 9h00.'
+        });
       } else {
-        if (restC) restC.innerHTML = `<span class="badge b-info">Hôtel ${formatMinToHHMM(restMin)}</span>`;
+        const reportMsg = pendingHomeRestDebtMin > 0
+          ? ' (Rattrapage en attente de +' + formatMinToHHMM(pendingHomeRestDebtMin) + ' du J' + pendingDebtOriginDay + ' reporté au repos domicile suivant)'
+          : '';
+        if (restCell) restCell.innerHTML = '<span class="badge b-info">Hôtel ' + formatMinToHHMM(restMin) + '</span>';
+        restAuditEvents.push({
+          level: 'info',
+          day: curr.day,
+          title: 'Jour ' + curr.day + ' — Découcher Hôtel conforme (' + formatMinToHHMM(restMin) + ')',
+          detail: 'Repos hors domicile >= 9h00 entre J' + prev.day + ' (' + prev.endStr + ') et J' + curr.day + ' (' + curr.startStr + ').' + reportMsg
+        });
       }
-    } else if (rxCnt > 0 || ooCnt > 0) {
-      const reqRx = rxCnt > 0 ? (38 * 60 + (rxCnt - 1) * 1440) : 38 * 60;
-      if (rxCnt > 0 && restMin < reqRx) {
-        if (restC) restC.innerHTML = `<span class="badge b-err">RX < ${reqRx/60}h</span>`;
-        restAuditEvents.push({ level: 'err', day: curr.day, title: `Jours ${prev.day}➔${curr.day} — Erreur RX`, detail: `Intervalle inférieur à ${reqRx/60}h.` });
+    } else if (rxCount > 0 || ooCount > 0) {
+      const requiredRxMin = rxCount > 0 ? (38 * 60 + (rxCount - 1) * 24 * 60) : 38 * 60;
+
+      if (rxCount > 0 && restMin < requiredRxMin) {
+        if (restCell) restCell.innerHTML = '<span class="badge b-err">' + formatMinToHHMM(restMin) + ' (RX &lt; ' + (requiredRxMin / 60) + 'h)</span>';
+        if (rowEl) rowEl.classList.add('row-anomaly');
+        restAuditEvents.push({
+          level: 'err',
+          day: curr.day,
+          title: 'Jours ' + prev.day + '➔' + curr.day + ' — ERREUR RX : ' + formatMinToHHMM(restMin) + ' au lieu de ' + (requiredRxMin / 60) + 'h00',
+          detail: 'L\'intervalle entre J' + prev.day + ' (' + prev.endStr + ') et J' + curr.day + ' (' + curr.startStr + ') ne respecte pas les ' + (requiredRxMin / 60) + 'h00 requises. Il faut remplacer le RX par un Alternement (OO).'
+        });
+      } else if (ooCount > 0 && rxCount === 0) {
+        if (restMin < 38 * 60) {
+          if (restCell) restCell.innerHTML = '<span class="badge b-ok">OO (' + formatMinToHHMM(restMin) + ' &lt;38h)</span>';
+          restAuditEvents.push({
+            level: 'ok',
+            day: curr.day,
+            title: 'Jours ' + prev.day + '➔' + curr.day + ' — Alternement (OO) valide (' + formatMinToHHMM(restMin) + ')',
+            detail: 'Les 38h00 ne pouvant pas être atteintes (' + formatMinToHHMM(restMin) + '), l\'utilisation de la période blanche (OO) est conforme.'
+          });
+        } else {
+          if (restCell) restCell.innerHTML = '<span class="badge b-err">OO invalide (' + formatMinToHHMM(restMin) + ' &ge;38h)</span>';
+          if (rowEl) rowEl.classList.add('row-anomaly');
+          restAuditEvents.push({
+            level: 'err',
+            day: curr.day,
+            title: 'Jours ' + prev.day + '➔' + curr.day + ' — ANOMALIE Alternement (OO) : Intervalle de ' + formatMinToHHMM(restMin) + ' (>= 38h00)',
+            detail: 'L\'alternement (OO) ne peut être mis que si les 38h ne peuvent pas être respectées. Ici (' + formatMinToHHMM(restMin) + '), un jour de repos RX doit être inscrit.'
+          });
+        }
       } else {
-        if (restC) restC.innerHTML = `<span class="badge b-ok">RX ${formatMinToHHMM(restMin)}</span>`;
+        if (restCell) restCell.innerHTML = '<span class="badge b-ok">RX ' + formatMinToHHMM(restMin) + '</span>';
       }
-      pendingDebt = 0; pendingDay = null;
+      pendingHomeRestDebtMin = 0;
+      pendingDebtOriginDay = null;
     } else {
-      const expMin = 14 * 60 + pendingDebt;
-      if (pendingDebt > 0) {
-        pendingDebt = 0; pendingDay = null;
+      const expectedMin = 14 * 60 + pendingHomeRestDebtMin;
+
+      if (pendingHomeRestDebtMin > 0) {
+        if (restMin < expectedMin) {
+          if (rowEl) rowEl.classList.add('row-anomaly');
+          restAuditEvents.push({
+            level: 'err',
+            day: curr.day,
+            title: 'Jour ' + curr.day + ' — INFRACTION Rattrapage non rendu (' + formatMinToHHMM(restMin) + ' au lieu de ' + formatMinToHHMM(expectedMin) + ')',
+            detail: 'Suite au repos réduit du J' + pendingDebtOriginDay + ', cet intervalle à domicile devait être d\'au moins 14h00 + ' + formatMinToHHMM(pendingHomeRestDebtMin) + ' = ' + formatMinToHHMM(expectedMin) + '.'
+          });
+        } else {
+          restAuditEvents.push({
+            level: 'ok',
+            day: curr.day,
+            title: 'Jour ' + curr.day + ' — Rattrapage du repos réduit (J' + pendingDebtOriginDay + ') bien restitué (' + formatMinToHHMM(restMin) + ')',
+            detail: 'Les +' + formatMinToHHMM(pendingHomeRestDebtMin) + ' manquants ont bien été ajoutés aux 14h00 (attendu : ' + formatMinToHHMM(expectedMin) + ').'
+          });
+        }
+        pendingHomeRestDebtMin = 0;
+        pendingDebtOriginDay = null;
       }
+
       if (restMin < 14 * 60) {
         reducedRestCount++;
         const shortfall = 14 * 60 - restMin;
-        pendingDebt = shortfall; pendingDay = curr.day;
-        if (restMin <= 12 * 60) {
+        pendingHomeRestDebtMin = shortfall;
+        pendingDebtOriginDay = curr.day;
+        weeklyReductionsCount[curr.weekKey] = (weeklyReductionsCount[curr.weekKey] || 0) + 1;
+
+        if (restMin < 9 * 60) {
           abnormalRest12Count++;
-          if (restC) restC.innerHTML = `<span class="badge b-err">Anormal $\le$12h</span>`;
-          restAuditEvents.push({ level: 'err', day: curr.day, title: `Jour ${curr.day} — Repos $\le$ 12h (${formatMinToHHMM(restMin)})`, detail: `Rattrapage requis de +${formatMinToHHMM(shortfall)}.` });
+          if (restCell) restCell.innerHTML = '<span class="badge b-err">' + formatMinToHHMM(restMin) + ' (&lt;9h ILLÉGAL)</span>';
+          if (rowEl) rowEl.classList.add('row-anomaly');
+          restAuditEvents.push({
+            level: 'err',
+            day: curr.day,
+            title: 'Jour ' + curr.day + ' — INFRACTION GRAVE : Repos domicile < 9h00 (' + formatMinToHHMM(restMin) + ')',
+            detail: 'Fin J' + prev.day + ' à ' + prev.endStr + ', reprise J' + curr.day + ' à ' + curr.startStr + '. En dessous du minimum absolu de 9h00.'
+          });
+        } else if (restMin <= 12 * 60) {
+          abnormalRest12Count++;
+          if (restCell) restCell.innerHTML = '<span class="badge b-err">ANORMAL ' + formatMinToHHMM(restMin) + ' (&le;12h)</span>';
+          if (rowEl) rowEl.classList.add('row-anomaly');
+          restAuditEvents.push({
+            level: 'err',
+            day: curr.day,
+            title: 'Jour ' + curr.day + ' — ANOMALIE : Repos réduit à 12h00 ou moins (' + formatMinToHHMM(restMin) + ')',
+            detail: 'Intervalle J' + prev.day + ' (' + prev.endStr + ') ➔ J' + curr.day + ' (' + curr.startStr + ') = ' + formatMinToHHMM(restMin) + ' (<= 12h00). Temps manquant à rendre au prochain repos domicile (hors découcher) : +' + formatMinToHHMM(shortfall) + '.'
+          });
         } else {
-          if (restC) restC.innerHTML = `<span class="badge b-warn">Réduit ${formatMinToHHMM(restMin)}</span>`;
+          if (restCell) restCell.innerHTML = '<span class="badge b-warn">Réduit ' + formatMinToHHMM(restMin) + ' (-' + formatMinToHHMM(shortfall) + ')</span>';
+          restAuditEvents.push({
+            level: 'warn',
+            day: curr.day,
+            title: 'Jour ' + curr.day + ' — Repos réduit entre 12h01 et 13h59 (' + formatMinToHHMM(restMin) + ')',
+            detail: 'Temps manquant de +' + formatMinToHHMM(shortfall) + ' à rendre obligatoirement lors du prochain repos à domicile (saute le découcher s\'il y en a un).'
+          });
+        }
+
+        if (weeklyReductionsCount[curr.weekKey] > 1) {
+          if (rowEl) rowEl.classList.add('row-anomaly');
+          restAuditEvents.push({
+            level: 'err',
+            day: curr.day,
+            title: 'Semaine ' + curr.weekKey + ' (Jour ' + curr.day + ') — INFRACTION : Plus d\'un repos réduit (<14h) sur la semaine',
+            detail: 'Réduction n°' + weeklyReductionsCount[curr.weekKey] + ' sur la même semaine (maximum autorisé : 1 fois par semaine).'
+          });
         }
       } else {
-        if (restC) restC.innerHTML = `<span class="badge b-ok">${formatMinToHHMM(restMin)}</span>`;
+        if (restCell) restCell.innerHTML = '<span class="badge b-ok">' + formatMinToHHMM(restMin) + '</span>';
       }
     }
   }
@@ -1159,118 +1623,493 @@ function recalculateAll() {
     if (obj.min > 46 * 60) {
       const exc = obj.min - 46 * 60;
       totalWeeklyOTMin += exc;
-      traceabilityEvents.push({ type: 'OT_WEEK', day: obj.days[0] || 1, label: `Semaine ${wk} : HS Hebdo (+${formatMinToHHMM(exc)})`, detail: `Total sem > 46h.` });
+      traceabilityEvents.push({
+        type: 'OT_WEEK',
+        day: obj.days[0] || 1,
+        label: 'Semaine ' + wk + ' : Heures Sup. Hebdomadaires (+' + formatMinToHHMM(exc) + ')',
+        detail: 'Total hebdomadaire de ' + formatMinToHHMM(obj.min) + ' sur les jours [' + obj.days.join(', ') + '] (dépassement du seuil de 46h00).'
+      });
     }
   });
 
   const prevQHours = parseFloat(document.getElementById('prevQuarterHours').value || '0');
   const qWeeks = parseFloat(document.getElementById('quarterWeeks').value || '13');
-  const qThresh = Math.round(qWeeks * 38 * 60);
-  const totalQMin = Math.round(prevQHours * 60) + totalWorkMin;
-  const totalQOTMin = Math.max(0, totalQMin - qThresh);
+  const quarterThresholdMin = Math.round(qWeeks * 38 * 60);
+  const totalQuarterMin = Math.round(prevQHours * 60) + totalWorkMin;
+  const totalQuarterOTMin = Math.max(0, totalQuarterMin - quarterThresholdMin);
+
+  if (totalQuarterOTMin > 0) {
+    traceabilityEvents.push({
+      type: 'OT_QUARTER',
+      day: 31,
+      label: 'Trimestre (' + qWeeks + ' sem.) : Heures Sup. Trimestrielles (+' + formatMinToHHMM(totalQuarterOTMin) + ')',
+      detail: 'Volume trimestriel consolidé de ' + formatMinToHHMM(totalQuarterMin) + ' pour un seuil de ' + formatMinToHHMM(quarterThresholdMin) + ' (' + qWeeks + ' sem. × 38h).'
+    });
+  }
 
   const usedCounts = { RX: 0, OO: 0, ELH: 0, REC: 0, WKD: 0, ZZ: 0, ZB: 0, BLH: 0, BELH: 0, BTH: 0, BTULH: 0, NMBS: 0 };
-  scheduleData.forEach(r => { if (usedCounts[r.code] !== undefined) usedCounts[r.code]++; });
+  scheduleData.forEach(r => {
+    if (usedCounts[r.code] !== undefined) usedCounts[r.code]++;
+  });
 
-  const bRX = parseFloat(document.getElementById('cnt_RX').value || '0');
-  const bNMBS = parseFloat(document.getElementById('cnt_NMBS').value || '0');
-  const bREC = parseFloat(document.getElementById('cnt_REC').value || '0');
-  const bWKD = parseFloat(document.getElementById('cnt_WKD').value || '0');
-  const bZZ = parseFloat(document.getElementById('cnt_ZZ').value || '0');
-  const bZB = parseFloat(document.getElementById('cnt_ZB').value || '0');
-  const bBLH = parseFloat(document.getElementById('cnt_BLH').value || '0');
-  const bBELH = parseFloat(document.getElementById('cnt_BELH').value || '0');
-  const bBTH = parseFloat(document.getElementById('cnt_BTH').value || '0');
-  const bBTULH = parseFloat(document.getElementById('cnt_BTULH').value || '0');
-  const usedExtra = usedCounts.ELH + usedCounts.BELH;
+  const baseRX = parseFloat(document.getElementById('cnt_RX').value || '0');
+  const baseNMBS = parseFloat(document.getElementById('cnt_NMBS').value || '0');
+  const baseREC = parseFloat(document.getElementById('cnt_REC').value || '0');
+  const baseWKD = parseFloat(document.getElementById('cnt_WKD').value || '0');
+  const baseZZ = parseFloat(document.getElementById('cnt_ZZ').value || '0');
+  const baseZB = parseFloat(document.getElementById('cnt_ZB').value || '0');
+  const baseBLH = parseFloat(document.getElementById('cnt_BLH').value || '0');
+  const baseBELH = parseFloat(document.getElementById('cnt_BELH').value || '0');
+  const baseBTH = parseFloat(document.getElementById('cnt_BTH').value || '0');
+  const baseBTULH = parseFloat(document.getElementById('cnt_BTULH').value || '0');
+
+  const usedExtralegal = usedCounts.ELH + usedCounts.BELH;
 
   document.getElementById('counterSummaryBox').innerHTML =
-    `Utilisés ce mois : <strong>${usedCounts.RX} RX</strong> • <strong>${usedCounts.OO} OO</strong> • <strong>WKD : ${bWKD - usedCounts.WKD}</strong> • <strong>REC : ${bREC}h</strong>`;
+    'Utilisés ce mois : <strong>' + usedCounts.RX + ' RX</strong> (Solde RX : ' + (baseRX - usedCounts.RX) + ') • ' +
+    '<strong>' + usedCounts.OO + ' OO (Alternements)</strong> • ' +
+    '<strong>' + usedExtralegal + ' ELH/BELH</strong> (Solde BELH : ' + (baseBELH - usedExtralegal) + ') • ' +
+    '<strong>WKD : ' + (baseWKD - usedCounts.WKD) + '</strong> • <strong>REC : ' + baseREC + 'h</strong> • ' +
+    '<strong>ZZ : ' + (baseZZ + usedCounts.ZZ) + '</strong> • <strong>ZB : ' + (baseZB - usedCounts.ZB) + '</strong>';
 
   const counterRows = [
-    { code: 'RX', label: 'Jours de repos', init: bRX, used: usedCounts.RX, rem: bRX - usedCounts.RX },
-    { code: 'OO', label: 'Alternements', init: '-', used: usedCounts.OO, rem: `${usedCounts.OO} posé(s)` },
-    { code: 'NMBS', label: 'Congés SNCB', init: bNMBS, used: usedCounts.NMBS, rem: bNMBS - usedCounts.NMBS },
-    { code: 'REC', label: 'Heures récup (h)', init: `${bREC}h`, used: `${usedCounts.REC} j`, rem: `${bREC}h` },
-    { code: 'WKD', label: 'Repos week-end', init: bWKD, used: usedCounts.WKD, rem: bWKD - usedCounts.WKD },
-    { code: 'ZZ', label: 'Maladie', init: bZZ, used: usedCounts.ZZ, rem: bZZ + usedCounts.ZZ },
-    { code: 'ZB', label: 'Sans solde 45+', init: bZB, used: usedCounts.ZB, rem: bZB - usedCounts.ZB },
-    { code: 'BLH', label: 'Légaux', init: bBLH, used: usedCounts.BLH, rem: bBLH - usedCounts.BLH },
-    { code: 'BELH', label: 'Extralégaux', init: bBELH, used: usedExtra, rem: bBELH - usedExtra },
-    { code: 'BTH', label: 'Reportés N-1', init: bBTH, used: usedCounts.BTH, rem: bBTH - usedCounts.BTH },
-    { code: 'BTULH', label: 'Non rémunérés', init: bBTULH, used: usedCounts.BTULH, rem: bBTULH - usedCounts.BTULH }
+    { code: 'RX', label: 'Jours de repos périodiques', init: baseRX, used: usedCounts.RX, rem: baseRX - usedCounts.RX },
+    { code: 'OO', label: 'Alternements (Périodes blanches)', init: '-', used: usedCounts.OO, rem: usedCounts.OO + ' posé(s)' },
+    { code: 'NMBS', label: 'Congés SNCB', init: baseNMBS, used: usedCounts.NMBS, rem: baseNMBS - usedCounts.NMBS },
+    { code: 'REC', label: 'Heures de récupération (h)', init: baseREC + 'h', used: usedCounts.REC + ' j', rem: baseREC + 'h' },
+    { code: 'WKD', label: 'Repos de week-end', init: baseWKD, used: usedCounts.WKD, rem: baseWKD - usedCounts.WKD },
+    { code: 'ZZ', label: 'Jours de maladie', init: baseZZ, used: usedCounts.ZZ, rem: baseZZ + usedCounts.ZZ },
+    { code: 'ZB', label: 'Congé sans solde 45+', init: baseZB, used: usedCounts.ZB, rem: baseZB - usedCounts.ZB },
+    { code: 'BLH', label: 'Solde de congés légaux', init: baseBLH, used: usedCounts.BLH, rem: baseBLH - usedCounts.BLH },
+    { code: 'BELH / ELH', label: 'Solde de congés extralégaux', init: baseBELH, used: usedExtralegal, rem: baseBELH - usedExtralegal },
+    { code: 'BTH', label: 'Congés reportés année précédente', init: baseBTH, used: usedCounts.BTH, rem: baseBTH - usedCounts.BTH },
+    { code: 'BTULH', label: 'Congés légaux non rémunérés', init: baseBTULH, used: usedCounts.BTULH, rem: baseBTULH - usedCounts.BTULH }
   ];
 
   const cBody = document.getElementById('counterDetailTableBody');
   if (cBody) {
-    cBody.innerHTML = counterRows.map(c => `<tr><td style="font-weight:700; color:var(--accent);">${c.code}</td><td style="text-align:left;">${c.label}</td><td>${c.init}</td><td>${c.used}</td><td style="font-weight:700;">${c.rem}</td></tr>`).join('');
+    cBody.innerHTML = counterRows.map(c =>
+      '<tr>' +
+        '<td style="font-weight:700; color:var(--accent);">' + c.code + '</td>' +
+        '<td style="text-align:left;">' + c.label + '</td>' +
+        '<td>' + c.init + '</td>' +
+        '<td>' + c.used + '</td>' +
+        '<td style="font-weight:700;">' + c.rem + '</td>' +
+      '</tr>'
+    ).join('');
   }
 
   document.getElementById('kpiTotalHours').textContent = formatMinToHHMM(totalWorkMin);
-  document.getElementById('kpiServiceCount').textContent = `${serviceCount} prestation(s) BVTS`;
-  document.getElementById('kpiWeekendHours').textContent = `${formatMinToHHMM(totalSatMin)} / ${formatMinToHHMM(totalSunMin)}`;
-  document.getElementById('kpiOvertimeDayWeek').textContent = `${formatMinToHHMM(totalDailyOTMin)} / ${formatMinToHHMM(totalWeeklyOTMin)}`;
-  document.getElementById('kpiOvertimeQuarter').textContent = formatMinToHHMM(totalQOTMin);
-  document.getElementById('kpiQuarterSub').textContent = `Cumul trim : ${formatMinToHHMM(totalQMin)} / ${formatMinToHHMM(qThresh)}`;
-  document.getElementById('kpiRxOoCount').textContent = `${usedCounts.RX} RX / ${usedCounts.OO} OO`;
-  document.getElementById('kpiHotelCount').textContent = `${hotelCount} découcher(s)`;
-  document.getElementById('kpiReducedRest').textContent = `${reducedRestCount} réduit(s) / ${abnormalRest12Count} $\le$12h`;
+  document.getElementById('kpiServiceCount').textContent = serviceCount + ' prestation(s) BVTS';
+  document.getElementById('kpiWeekendHours').textContent = formatMinToHHMM(totalSatMin) + ' / ' + formatMinToHHMM(totalSunMin);
+  document.getElementById('kpiOvertimeDayWeek').textContent = formatMinToHHMM(totalDailyOTMin) + ' / ' + formatMinToHHMM(totalWeeklyOTMin);
+  document.getElementById('kpiOvertimeQuarter').textContent = formatMinToHHMM(totalQuarterOTMin);
+  document.getElementById('kpiQuarterSub').textContent = 'Cumul trimestre : ' + formatMinToHHMM(totalQuarterMin) + ' / ' + formatMinToHHMM(quarterThresholdMin);
+  document.getElementById('kpiRxOoCount').textContent = usedCounts.RX + ' RX / ' + usedCounts.OO + ' OO';
+  document.getElementById('kpiHotelCount').textContent = hotelCount + ' découcher(s)';
+  document.getElementById('kpiReducedRest').textContent = reducedRestCount + ' réduit(s) / ' + abnormalRest12Count + ' <=12h';
 
-  const errCnt = restAuditEvents.filter(e => e.level === 'err').length;
+  const errCount = restAuditEvents.filter(e => e.level === 'err').length;
   const kpiAnomEl = document.getElementById('kpiAnomalies');
+  const kpiRestSub = document.getElementById('kpiRestSub');
   const quickBanner = document.getElementById('quickStatusBanner');
   const tabBadge = document.getElementById('tabBadgeAnom');
 
-  if (errCnt > 0) {
-    kpiAnomEl.textContent = `${errCnt} Anomalie(s)`; kpiAnomEl.style.color = 'var(--red)';
-    if (quickBanner) { quickBanner.className = 'badge b-err'; quickBanner.textContent = `⚠️ ${errCnt} Anomalie(s)`; }
-    if (tabBadge) { tabBadge.style.display = 'inline-block'; tabBadge.textContent = String(errCnt); }
+  if (errCount > 0) {
+    kpiAnomEl.textContent = errCount + ' Anomalie(s)';
+    kpiAnomEl.style.color = 'var(--red)';
+    kpiRestSub.textContent = 'Voir Onglet 5 (Audit)';
+    if (quickBanner) {
+      quickBanner.className = 'badge b-err';
+      quickBanner.textContent = '⚠️ ' + errCount + ' Anomalie(s)';
+    }
+    if (tabBadge) {
+      tabBadge.style.display = 'inline-block';
+      tabBadge.textContent = String(errCount);
+    }
   } else {
-    kpiAnomEl.textContent = 'Conforme'; kpiAnomEl.style.color = 'var(--green)';
-    if (quickBanner) { quickBanner.className = 'badge b-ok'; quickBanner.textContent = '✓ Conforme'; }
-    if (tabBadge) { tabBadge.style.display = 'none'; }
+    kpiAnomEl.textContent = 'Conforme';
+    kpiAnomEl.style.color = 'var(--green)';
+    kpiRestSub.textContent = 'Tous les intervalles & repos sont valides';
+    if (quickBanner) {
+      quickBanner.className = 'badge b-ok';
+      quickBanner.textContent = '✓ Conforme';
+    }
+    if (tabBadge) {
+      tabBadge.style.display = 'none';
+    }
   }
 
-  document.getElementById('restAuditList').innerHTML = restAuditEvents.length ? restAuditEvents.map(e => `<div class="log-item ${e.level}"><strong>${e.title}</strong><div style="color:var(--muted); font-size:0.76rem;">${e.detail}</div></div>`).join('') : `<div class="log-item ok"><strong>Aucun problème d'intervalle détecté.</strong></div>`;
-  document.getElementById('traceabilityList').innerHTML = traceabilityEvents.length ? traceabilityEvents.map(t => `<div class="log-item info"><strong>${t.label}</strong><div style="color:var(--muted); font-size:0.76rem;">${t.detail}</div></div>`).join('') : `<div class="log-item info">Aucune heure supplémentaire ni weekend sur la période.</div>`;
+  const restListEl = document.getElementById('restAuditList');
+  restListEl.innerHTML = restAuditEvents.length
+    ? restAuditEvents.map(e =>
+        '<div class="log-item ' + e.level + '">' +
+          '<strong>' + e.title + '</strong>' +
+          '<div style="color:var(--muted); font-size:0.76rem; margin-top:2px;">' + e.detail + '</div>' +
+        '</div>'
+      ).join('')
+    : '<div class="log-item ok"><strong>Aucun problème d\'intervalle détecté (Repos 14h, Hôtel 9h, RX 38h et Alternements OO respectés).</strong></div>';
+
+  const traceListEl = document.getElementById('traceabilityList');
+  traceListEl.innerHTML = traceabilityEvents.length
+    ? traceabilityEvents.map(t =>
+        '<div class="log-item ' + (t.type.startsWith('OT') ? 'err' : 'info') + '">' +
+          '<strong>' + t.label + '</strong>' +
+          '<div style="color:var(--muted); font-size:0.76rem; margin-top:2px;">' + t.detail + '</div>' +
+        '</div>'
+      ).join('')
+    : '<div class="log-item info">Aucune heure supplémentaire ni prestation de week-end sur la période.</div>';
 
   applyRowFilter();
-  saveStateToLocal();
 
   lastComputedReport = {
-    month: m, year: y,
-    driverName: document.getElementById('driverInput').value || document.getElementById('e500FullName').value || 'Vierge',
+    month: m,
+    year: y,
+    driverName: document.getElementById('driverInput').value || document.getElementById('e500FullName').value || 'Vierge (Non renseigné)',
     matricule: document.getElementById('driverMatricule').value || '-',
-    totalWorkMin, totalSatMin, totalSunMin, totalDailyOTMin, totalWeeklyOTMin, totalQOTMin,
-    usedCounts, hotelCount, reducedRestCount, abnormalRest12Count, restAuditEvents, traceabilityEvents
+    totalWorkMin: totalWorkMin,
+    totalSatMin: totalSatMin,
+    totalSunMin: totalSunMin,
+    totalDailyOTMin: totalDailyOTMin,
+    totalWeeklyOTMin: totalWeeklyOTMin,
+    totalQuarterOTMin: totalQuarterOTMin,
+    totalQuarterMin: totalQuarterMin,
+    quarterThresholdMin: quarterThresholdMin,
+    usedCounts: usedCounts,
+    hotelCount: hotelCount,
+    reducedRestCount: reducedRestCount,
+    abnormalRest12Count: abnormalRest12Count,
+    restAuditEvents: restAuditEvents,
+    traceabilityEvents: traceabilityEvents
   };
 }
 
-// Import PDF e500
+// 9. Importation intelligente PDF E500 & Image (Local pdf.js + IA Gemini optionnelle)
 async function handleScheduleFileImport(event) {
   const file = event.target.files[0];
   if (!file) return;
   const statusEl = document.getElementById('importStatusMsg');
-  statusEl.textContent = 'Lecture du PDF E500 en cours...';
+  const apiKey = (document.getElementById('geminiApiKeyInput').value || '').trim();
+  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+  const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp)$/i.test(file.name);
 
-  if (file.type === 'application/pdf') {
+  statusEl.style.color = 'var(--accent)';
+  statusEl.textContent = '⏳ Analyse de "' + file.name + '" en cours...';
+
+  if (isPdf) {
     try {
+      if (typeof window.pdfjsLib === 'undefined') {
+        throw new Error('Librairie PDF non chargée. Vérifie ta connexion internet.');
+      }
       const ab = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
-      let text = '';
+      const pdf = await window.pdfjsLib.getDocument({ data: ab }).promise;
+      let fullText = '';
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const tc = await page.getTextContent();
-        text += tc.items.map(it => it.str).join(' ') + '
-';
+        const pageLines = {};
+        tc.items.forEach(it => {
+          const yKey = Math.round(it.transform[5] / 4) * 4;
+          if (!pageLines[yKey]) pageLines[yKey] = [];
+          pageLines[yKey].push({ x: it.transform[4], str: it.str });
+        });
+        const sortedY = Object.keys(pageLines).map(Number).sort((a, b) => b - a);
+        sortedY.forEach(y => {
+          const rowStr = pageLines[y].sort((a, b) => a.x - b.x).map(i => i.str).join(' ');
+          fullText += rowStr + '\n';
+        });
       }
-      statusEl.textContent = '✓ PDF lu avec succès !';
-      statusEl.style.color = 'var(--green)';
-    } catch(e) {
-      statusEl.textContent = 'Erreur lecture PDF.'; statusEl.style.color = 'var(--red)';
+
+      // Si une clé Gemini est présente, on peut affiner via Gemini, sinon extraction locale directe
+      if (apiKey) {
+        statusEl.textContent = '⏳ Extraction précise de ta ligne E500 via IA Gemini...';
+        const parsedByAi = await parseScheduleWithGeminiText(fullText, apiKey);
+        if (parsedByAi) {
+          statusEl.style.color = 'var(--green)';
+          statusEl.textContent = '✓ PDF E500 importé avec succès ! Vérifie l\'onglet 4 (Planning).';
+          switchTab(4);
+          return;
+        }
+      }
+
+      const count = parseLocalScheduleText(fullText);
+      if (count > 0) {
+        statusEl.style.color = 'var(--green)';
+        statusEl.textContent = '✓ PDF lu (' + count + ' jour(s) détecté(s)) ! Vérifie l\'onglet 4 (Planning).';
+        switchTab(4);
+      } else {
+        statusEl.style.color = 'var(--orange)';
+        statusEl.textContent = '⚠️ Texte PDF lu, mais format E500 complexe : ajoute une clé API Gemini ci-dessous pour une lecture IA automatique.';
+      }
+    } catch (err) {
+      statusEl.style.color = 'var(--red)';
+      statusEl.textContent = '❌ Erreur PDF : ' + (err.message || 'Fichier non lisible');
     }
+  } else if (isImage) {
+    if (!apiKey) {
+      statusEl.style.color = 'var(--orange)';
+      statusEl.textContent = '⚠️ Pour lire une image / capture de ta ligne, renseigne ta clé API Gemini dans le champ juste en dessous.';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      try {
+        const base64Data = e.target.result.split(',')[1];
+        statusEl.textContent = '⏳ Lecture de l\'image de ta ligne par Gemini...';
+        const ok = await parseScheduleWithGeminiImage(base64Data, file.type || 'image/jpeg', apiKey);
+        if (ok) {
+          statusEl.style.color = 'var(--green)';
+          statusEl.textContent = '✓ Image de ta ligne importée avec succès !';
+          switchTab(4);
+        } else {
+          statusEl.style.color = 'var(--red)';
+          statusEl.textContent = '❌ Impossible d\'extraire les horaires de cette image.';
+        }
+      } catch (err) {
+        statusEl.style.color = 'var(--red)';
+        statusEl.textContent = '❌ Erreur lecture image : ' + (err.message || '');
+      }
+    };
+    reader.readAsDataURL(file);
   }
 }
+
+function applyExtractedJsonToSchedule(data) {
+  if (!data) return false;
+  if (data.fullName) document.getElementById('e500FullName').value = data.fullName;
+  if (data.matricule) document.getElementById('driverMatricule').value = data.matricule;
+  if (data.counters && typeof data.counters === 'object') {
+    ['RX', 'NMBS', 'REC', 'WKD', 'ZZ', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH'].forEach(k => {
+      if (data.counters[k] !== undefined && data.counters[k] !== null) {
+        const el = document.getElementById('cnt_' + k);
+        if (el) el.value = String(data.counters[k]);
+      }
+    });
+  }
+  if (Array.isArray(data.days)) {
+    data.days.forEach(item => {
+      const d = parseInt(item.day, 10);
+      const row = scheduleData.find(r => r.day === d);
+      if (row) {
+        row.code = CODES.includes(item.code) ? item.code : (item.start ? 'BVTS' : '-');
+        row.start = item.start || '';
+        row.end = item.end || '';
+        row.lit = ['none', 'aller', 'retour', '2'].includes(item.lit) ? item.lit : 'none';
+        row.trajetMin = parseInt(item.trajetMin || 0, 10) || 0;
+        row.note = item.note || '';
+      }
+    });
+    checkDriverMatch();
+    renderTable();
+    recalculateAll();
+    return true;
+  }
+  return false;
+}
+
+async function parseScheduleWithGeminiText(extractedText, apiKey) {
+  const targetDriver = document.getElementById('driverInput').value || document.getElementById('e500FullName').value || 'Rémy Marcel L BRASSEUR';
+  const prompt = 'Tu es un assistant ferroviaire Lineas/SIBELIT. Extrais uniquement la ligne de planning E500 de "' + targetDriver + '" (ou Rémy Brasseur) à partir de ce texte.\n' +
+    'Renvoie UNIQUEMENT un objet JSON valide de la forme : {"fullName":"...","matricule":"...","counters":{"RX":0,"REC":0,"WKD":0,"ZB":0,"BELH":0},"days":[{"day":1,"code":"BVTS","start":"13:00","end":"22:35","lit":"none","trajetMin":0}]}.\n' +
+    'Codes autorisés: BVTS, RX, OO, ELH, REC, WKD, ZZ, ZB, BLH, BELH, BTH, BTULH, NMBS, -.\nTexte :\n' + extractedText.slice(0, 28000);
+
+  const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(apiKey), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { responseMimeType: 'application/json' }
+    })
+  });
+  const json = await resp.json();
+  const rawText = json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts[0].text;
+  if (!rawText) return false;
+  const parsed = JSON.parse(rawText.replace(/```json|```/g, '').trim());
+  return applyExtractedJsonToSchedule(parsed);
+}
+
+async function parseScheduleWithGeminiImage(base64Data, mimeType, apiKey) {
+  const targetDriver = document.getElementById('driverInput').value || document.getElementById('e500FullName').value || 'Rémy Marcel L BRASSEUR';
+  const prompt = 'Extrais les horaires ferroviaires (Lineas E500) visibles sur cette image (pour ' + targetDriver + '). ' +
+    'Renvoie UNIQUEMENT un objet JSON valide de la forme : {"fullName":"...","matricule":"...","counters":{"RX":0,"REC":0,"WKD":0,"ZB":0,"BELH":0},"days":[{"day":1,"code":"BVTS","start":"13:00","end":"22:35","lit":"none","trajetMin":0}]}. ' +
+    'Codes autorisés: BVTS, RX, OO, ELH, REC, WKD, ZZ, ZB, BLH, BELH, BTH, BTULH, NMBS, -.';
+
+  const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(apiKey), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{
+        parts: [
+          { text: prompt },
+          { inline_data: { mime_type: mimeType, data: base64Data } }
+        ]
+      }],
+      generationConfig: { responseMimeType: 'application/json' }
+    })
+  });
+  const json = await resp.json();
+  const rawText = json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts[0].text;
+  if (!rawText) return false;
+  const parsed = JSON.parse(rawText.replace(/```json|```/g, '').trim());
+  return applyExtractedJsonToSchedule(parsed);
+}
+
+function parseLocalScheduleText(text) {
+  if (!text) return 0;
+  if (/BRASSEUR/i.test(text)) {
+    document.getElementById('e500FullName').value = 'Rémy Marcel L BRASSEUR';
+    checkDriverMatch();
+  }
+  const matMatch = text.match(/\b(899\d{6})\b/);
+  if (matMatch) {
+    document.getElementById('driverMatricule').value = matMatch[1];
+  }
+  let updatedCount = 0;
+  // Recherche de motifs "Jour Code HH:MM HH:MM" ou lignes numérotées
+  const lines = text.split(/\n+/);
+  lines.forEach(line => {
+    const m = line.match(/\b([1-9]|[12]\d|3[01])\b\s+(BVTS|RX|OO|ELH|REC|WKD|ZZ|ZB|BLH|BELH|BTH|BTULH|NMBS)\b(?:\s+(\d{1,2}[:hH]\d{2})\s*[-àa]?\s*(\d{1,2}[:hH]\d{2}))?/i);
+    if (m) {
+      const d = parseInt(m[1], 10);
+      const code = m[2].toUpperCase();
+      const row = scheduleData.find(r => r.day === d);
+      if (row) {
+        row.code = code;
+        if (m[3] && m[4]) {
+          row.start = m[3].replace(/[hH]/, ':');
+          row.end = m[4].replace(/[hH]/, ':');
+        }
+        updatedCount++;
+      }
+    }
+  });
+  if (updatedCount > 0) {
+    renderTable();
+    recalculateAll();
+  }
+  return updatedCount;
+}
+
+// 10. Construction du document PDF + Partage Mail & Cloud (Google Drive)
+function buildAuditJsPDF() {
+  recalculateAll();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const rep = lastComputedReport;
+  const monthFolder = MONTH_FOLDERS[rep.month] || String(rep.month);
+
+  doc.setFontSize(15);
+  doc.text('RB RailVigie — Rapport de Conformité & Traçabilité (' + monthFolder + ' ' + rep.year + ')', 14, 14);
+  doc.setFontSize(9.5);
+  doc.text('Conducteur : ' + rep.driverName + '   |   Matricule : ' + rep.matricule + '   |   Dossier Cloud : Travail / ' + rep.year + ' / ' + monthFolder, 14, 20);
+
+  doc.autoTable({
+    startY: 24,
+    head: [['Indicateur Temps & Week-end', 'Valeur', 'Indicateur Repos & Compteurs', 'Valeur']],
+    body: [
+      ['Heures Prestées (Mois)', formatMinToHHMM(rep.totalWorkMin), 'Jours RX / Alternements OO posés', rep.usedCounts.RX + ' RX / ' + rep.usedCounts.OO + ' OO'],
+      ['Heures Samedi / Dimanche', formatMinToHHMM(rep.totalSatMin) + ' / ' + formatMinToHHMM(rep.totalSunMin), 'Découchers Hôtel (min. 9h)', String(rep.hotelCount)],
+      ['Heures Sup. Jour (>10h) / Semaine (>46h)', formatMinToHHMM(rep.totalDailyOTMin) + ' / ' + formatMinToHHMM(rep.totalWeeklyOTMin), 'Repos réduits (<14h) / Anormaux (<=12h)', rep.reducedRestCount + ' / ' + rep.abnormalRest12Count],
+      ['Heures Sup. Trimestrielles (>38h/sem)', formatMinToHHMM(rep.totalQuarterOTMin), 'Anomalies réglementaires détectées', rep.restAuditEvents.filter(e => e.level === 'err').length + ' anomalie(s)']
+    ],
+    theme: 'grid',
+    styles: { fontSize: 8.5 }
+  });
+
+  const restRows = rep.restAuditEvents.map(a => ['Jour ' + a.day, a.level.toUpperCase(), a.title, a.detail]);
+  doc.autoTable({
+    startY: doc.lastAutoTable.finalY + 6,
+    head: [['Jour', 'Niveau', 'Contrôle Intervalle / Repos / RX / OO', 'Détail & Origine']],
+    body: restRows.length ? restRows : [['-', 'OK', 'Conformité totale', 'Tous les intervalles (14h, Hôtel 9h, RX 38h, OO) sont respectés.']],
+    theme: 'striped',
+    styles: { fontSize: 8 }
+  });
+
+  const traceRows = rep.traceabilityEvents.map(t => ['Jour ' + t.day, t.type, t.label, t.detail]);
+  doc.autoTable({
+    startY: doc.lastAutoTable.finalY + 6,
+    head: [['Jour', 'Type', 'Événement (Heures Sup. / Week-end)', 'Traçabilité exacte']],
+    body: traceRows.length ? traceRows : [['-', '-', 'Aucun dépassement', 'Aucune heure supplémentaire sur ce mois.']],
+    theme: 'striped',
+    styles: { fontSize: 8 }
+  });
+
+  const mNum = String(rep.month).padStart(2, '0');
+  const fileName = 'RB_RailVigie_Audit_' + rep.year + '_' + mNum + '.pdf';
+  return { doc: doc, fileName: fileName, rep: rep, monthFolder: monthFolder };
+}
+
+function openExportModal() {
+  updateCloudPathPreview();
+  document.getElementById('exportModal').style.display = 'flex';
+}
+
+function closeExportModal() {
+  document.getElementById('exportModal').style.display = 'none';
+}
+
+function downloadPDFDirect() {
+  const { doc, fileName } = buildAuditJsPDF();
+  doc.save(fileName);
+}
+
+// Partage Natif Android & iOS (Envoi vers Google Drive, OneDrive, Gmail, WhatsApp avec le PDF joint)
+async function sharePDFNativeCloudOrMail() {
+  const { doc, fileName, rep, monthFolder } = buildAuditJsPDF();
+  const savedEmail = (document.getElementById('userEmailInput').value || '').trim();
+  const cloudPath = 'Travail / ' + rep.year + ' / ' + monthFolder;
+
+  // Copie automatique de l'adresse mail ou du dossier cible dans le presse-papiers pour faciliter l'envoi
+  if (savedEmail && navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(savedEmail).catch(() => {});
+  }
+
+  const pdfBlob = doc.output('blob');
+  const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+  if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+    try {
+      await navigator.share({
+        title: 'RB RailVigie — ' + monthFolder + ' ' + rep.year,
+        text: 'Rapport RB RailVigie (' + rep.driverName + ').\nDossier Cloud cible : ' + cloudPath + (savedEmail ? '\nDestinataire : ' + savedEmail : ''),
+        files: [pdfFile]
+      });
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+    }
+  }
+  doc.save(fileName);
+}
+
+// Envoi par Email avec adresse pré-enregistrée dans les options
+function sendPDFBySavedEmail() {
+  const { doc, fileName, rep, monthFolder } = buildAuditJsPDF();
+  const savedEmail = (document.getElementById('userEmailInput').value || '').trim();
+  doc.save(fileName);
+
+  const subject = encodeURIComponent('RB RailVigie — Rapport ' + monthFolder + ' ' + rep.year + ' (' + rep.driverName + ')');
+  const body = encodeURIComponent(
+    'Bonjour,\n\n' +
+    'Veuillez trouver en pièce jointe le rapport PDF "' + fileName + '" (qui vient d\'être enregistré sur l\'appareil).\n\n' +
+    ' Synthèse ' + monthFolder + ' ' + rep.year + ' :\n' +
+    '- Conducteur : ' + rep.driverName + '\n' +
+    '- Heures prestées : ' + formatMinToHHMM(rep.totalWorkMin) + '\n' +
+    '- Week-end (Sam / Dim) : ' + formatMinToHHMM(rep.totalSatMin) + ' / ' + formatMinToHHMM(rep.totalSunMin) + '\n' +
+    '- Repos RX / OO : ' + rep.usedCounts.RX + ' RX / ' + rep.usedCounts.OO + ' OO\n' +
+    '- Dossier Cloud : Travail / ' + rep.year + ' / ' + monthFolder + '\n'
+  );
+  window.location.href = 'mailto:' + encodeURIComponent(savedEmail) + '?subject=' + subject + '&body=' + body;
+}
+
+// Démarrage 100 % vierge + chargement des options personnelles (Email / Clé API)
+window.addEventListener('DOMContentLoaded', () => {
+  loadUserSettings();
+  resetBlankMonth();
+  if (window.location.search.includes('vierge=1')) {
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+});
 </script>
 </body>
 </html>
