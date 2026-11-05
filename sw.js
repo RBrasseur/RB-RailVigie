@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rb-railvigie-v13';
+const CACHE_NAME = 'rb-railvigie-v14';
 const ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (event) => {
@@ -18,7 +18,7 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: 'no-store' })
       .then((res) => {
         const copy = res.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)).catch(() => {});
