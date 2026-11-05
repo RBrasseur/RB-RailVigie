@@ -24,7 +24,7 @@
       --text: #f8fafc;
       --muted: #94a3b8;
       --accent: #f59e0b;
-      --blue: #3b82f6;
+      --blue: #38bdf8;
       --pink: #ec4899;
       --green: #10b981;
       --red: #ef4444;
@@ -57,23 +57,24 @@
       flex-direction: column;
       gap: 12px;
     }
-    .header-bar {
-      background: var(--card);
+
+    /* EN-TÊTE STYLE RB RAILSYNTHÈSE */
+    .rs-header {
+      background: #131c31;
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px 14px;
+      border-radius: 14px;
+      padding: 10px 12px;
       display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
       gap: 10px;
     }
-    .brand-wrap {
+    .rs-left {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       min-width: 0;
-      flex: 1 1 220px;
+      flex: 1;
     }
     .app-logo {
       width: 44px;
@@ -81,22 +82,111 @@
       border-radius: 10px;
       flex-shrink: 0;
     }
-    .header-bar h1 {
-      font-size: 1.15rem;
-      color: var(--accent);
+    .rs-title-block {
+      min-width: 0;
     }
-    .subtitle {
-      font-size: 0.74rem;
+    .rs-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .rs-title-row h1 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.01em;
+    }
+    .saved-pill {
+      background: rgba(16, 185, 129, 0.18);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      padding: 2px 9px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      transition: transform 0.2s ease;
+    }
+    .rs-subtitle {
+      font-size: 0.76rem;
       color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
       margin-top: 2px;
     }
-    .btn-group {
+    .rs-actions {
       display: flex;
-      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .rs-icon-btn {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      transition: 0.15s;
+    }
+    .rs-icon-btn:active {
+      transform: scale(0.95);
+    }
+    .rs-icon-btn.qr-btn {
+      color: #34d399;
+    }
+    .rs-icon-btn.save-btn {
+      color: #fbbf24;
+    }
+    .rs-stack-btns {
+      display: flex;
+      flex-direction: column;
       gap: 6px;
     }
+    .rs-pill-cloud {
+      background: #38bdf8;
+      color: #0f172a;
+      border: none;
+      border-radius: 999px;
+      padding: 5px 14px;
+      font-size: 0.8rem;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+      min-width: 96px;
+    }
+    .rs-pill-pdf {
+      background: #f59e0b;
+      color: #0f172a;
+      border: none;
+      border-radius: 999px;
+      padding: 5px 14px;
+      font-size: 0.8rem;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+      min-width: 96px;
+    }
+
+    @media (max-width: 420px) {
+      .rs-icon-btn { width: 42px; height: 42px; border-radius: 12px; }
+      .rs-pill-cloud, .rs-pill-pdf { padding: 4px 11px; font-size: 0.76rem; min-width: 84px; }
+      .rs-title-row h1 { font-size: 1.02rem; }
+    }
+
     button, .file-btn-label {
-      background: var(--blue);
+      background: #3b82f6;
       color: #fff;
       border: none;
       padding: 8px 12px;
@@ -112,7 +202,7 @@
       text-decoration: none;
       user-select: none;
     }
-    button:hover, .file-btn-label:hover { filter: brightness(1.12); }
+    button:hover, .file-btn-label:hover { filter: brightness(1.1); }
     button:active, .file-btn-label:active { transform: scale(0.98); }
     .btn-amber { background: var(--accent); color: #000; }
     .btn-green { background: var(--green); color: #fff; }
@@ -431,25 +521,62 @@
 </head>
 <body>
 <div class="container">
-  <!-- En-tête avec icône RV by RB -->
-  <header class="header-bar">
-    <div class="brand-wrap">
+  <!-- EN-TÊTE IDENTIQUE À RB RAILSYNTHÈSE -->
+  <header class="rs-header">
+    <div class="rs-left">
       <img src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20512%20512%22%3E%3Crect%20width%3D%22512%22%20height%3D%22512%22%20rx%3D%2296%22%20fill%3D%22%230f172a%22/%3E%3Crect%20x%3D%2228%22%20y%3D%2228%22%20width%3D%22456%22%20height%3D%22456%22%20rx%3D%2276%22%20fill%3D%22%231e293b%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%2220%22/%3E%3Ctext%20x%3D%22256%22%20y%3D%22290%22%20font-family%3D%22system-ui%2Csans-serif%22%20font-size%3D%22220%22%20font-weight%3D%22800%22%20fill%3D%22%23f59e0b%22%20text-anchor%3D%22middle%22%3ERV%3C/text%3E%3Ctext%20x%3D%22442%22%20y%3D%22438%22%20font-family%3D%22system-ui%2Csans-serif%22%20font-size%3D%2268%22%20font-weight%3D%22700%22%20fill%3D%22%23f8fafc%22%20text-anchor%3D%22end%22%3Eby%20RB%3C/text%3E%3C/svg%3E" alt="RV by RB" class="app-logo">
-      <div>
-        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+      <div class="rs-title-block">
+        <div class="rs-title-row">
           <h1>RB RailVigie</h1>
-          <span id="quickStatusBanner" class="badge b-ok">✓ Conforme</span>
+          <span id="saveStatusBadge" class="saved-pill">Sauvegardé</span>
         </div>
-        <p class="subtitle">
-          Vigie CP 226 : Repos 14h (&le;12h) • Rattrapages • Hôtel 9h • RX 38h vs OO • Week-ends
-        </p>
+        <p id="headerDriverSub" class="rs-subtitle">Vierge • Lineas / CP 226</p>
       </div>
     </div>
-    <div class="btn-group">
-      <button type="button" class="btn-outline" onclick="openShareQRModal()">📱 Partager (QR)</button>
-      <button type="button" class="btn-outline" onclick="resetBlankMonth()">Mois Vierge</button>
-      <button type="button" class="btn-amber" onclick="loadOctoberDemo()">Exemple Oct.</button>
-      <button type="button" class="btn-green" onclick="openExportModal()">📤 Exporter PDF / Cloud</button>
+
+    <div class="rs-actions">
+      <!-- Bouton Carré QR Code (Vert) -->
+      <button type="button" class="rs-icon-btn qr-btn" onclick="openShareQRModal()" title="Partager l'application vierge par QR Code">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+          <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+          <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+          <rect x="14" y="14" width="3" height="3"></rect>
+          <path d="M18 14h3v3"></path>
+          <path d="M14 18h3v3"></path>
+          <path d="M18 18h3v3"></path>
+        </svg>
+      </button>
+
+      <!-- Bouton Carré Disquette Sauvegarde Locale (Jaune/Ambre) -->
+      <button type="button" class="rs-icon-btn save-btn" onclick="triggerManualSave()" title="Enregistrer localement sur le téléphone">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+          <polyline points="17 21 17 13 7 13 7 21"></polyline>
+          <polyline points="7 3 7 8 15 8"></polyline>
+        </svg>
+      </button>
+
+      <!-- Pile de 2 boutons pilules : Cloud (Bleu) & PDF (Ambre) -->
+      <div class="rs-stack-btns">
+        <button type="button" class="rs-pill-cloud" onclick="sharePDFNativeCloudOrMail()" title="Envoyer vers Cloud Drive / Mail / WhatsApp">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path>
+            <path d="M12 13v6"></path>
+            <path d="m9 16 3-3 3 3"></path>
+          </svg>
+          Cloud
+        </button>
+        <button type="button" class="rs-pill-pdf" onclick="downloadPDFDirect()" title="Télécharger le PDF sur le téléphone">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <path d="M12 18v-6"></path>
+            <path d="m9 15 3 3 3-3"></path>
+          </svg>
+          PDF
+        </button>
+      </div>
     </div>
   </header>
 
@@ -458,26 +585,32 @@
     <div class="grid-two">
       <!-- Bloc 1 : Conducteur, Période & Importation Horaires -->
       <div class="card">
-        <h2>1. Conducteur, Période &amp; Import Horaires</h2>
+        <div class="section-head">
+          <h2>1. Conducteur, Période &amp; Import Horaires</h2>
+          <div style="display:flex; gap:6px;">
+            <button type="button" class="btn-outline" style="padding:5px 10px; font-size:0.75rem;" onclick="resetBlankMonth()">Mois Vierge</button>
+            <button type="button" class="btn-amber" style="padding:5px 10px; font-size:0.75rem;" onclick="loadOctoberDemo()">Exemple Oct.</button>
+          </div>
+        </div>
         <div class="form-row">
           <div class="field">
             <label>Nom du conducteur (vierge par défaut)</label>
-            <input type="text" id="driverInput" value="" placeholder="Ex: Rémy Brasseur" oninput="checkDriverMatch()">
-            <div id="driverMatchInfo" class="match-status">Application 100 % vierge (prête pour partage aux collègues).</div>
+            <input type="text" id="driverInput" value="" placeholder="Ex: Rémy Brasseur" oninput="checkDriverMatch(); saveStateToLocal(true);">
+            <div id="driverMatchInfo" class="match-status">Application vierge par défaut (prête pour partage aux collègues).</div>
           </div>
           <div class="field">
             <label>Nom complet sur fiche E500</label>
-            <input type="text" id="e500FullName" value="" placeholder="Ex: Rémy Marcel L BRASSEUR" oninput="checkDriverMatch()">
+            <input type="text" id="e500FullName" value="" placeholder="Ex: Rémy Marcel L BRASSEUR" oninput="checkDriverMatch(); saveStateToLocal(true);">
           </div>
         </div>
         <div class="form-row">
           <div class="field">
             <label>Matricule</label>
-            <input type="text" id="driverMatricule" value="" placeholder="Ex: 899008349">
+            <input type="text" id="driverMatricule" value="" placeholder="Ex: 899008349" oninput="saveStateToLocal(true)">
           </div>
           <div class="field">
             <label>Mois</label>
-            <select id="monthSelect" onchange="rebuildMonthChange()">
+            <select id="monthSelect" onchange="rebuildMonthChange(); saveStateToLocal(true);">
               <option value="1">01 - Janvier</option>
               <option value="2">02 - Févier</option>
               <option value="3">03 - Mars</option>
@@ -494,17 +627,17 @@
           </div>
           <div class="field">
             <label>Année</label>
-            <input type="number" id="yearInput" value="2026" onchange="rebuildMonthChange()">
+            <input type="number" id="yearInput" value="2026" onchange="rebuildMonthChange(); saveStateToLocal(true);">
           </div>
         </div>
         <div class="form-row">
           <div class="field">
             <label>Cumul Heures Trimestre (M-1 &amp; M-2)</label>
-            <input type="number" step="0.25" id="prevQuarterHours" value="" placeholder="0" oninput="recalculateAll()">
+            <input type="number" step="0.25" id="prevQuarterHours" value="" placeholder="0" oninput="recalculateAll(); saveStateToLocal(true);">
           </div>
           <div class="field">
             <label>Semaines sur le trimestre (ex: 13)</label>
-            <input type="number" id="quarterWeeks" value="13" oninput="recalculateAll()">
+            <input type="number" id="quarterWeeks" value="13" oninput="recalculateAll(); saveStateToLocal(true);">
           </div>
         </div>
 
@@ -531,13 +664,13 @@
 
       <!-- Bloc 2 : Options Mail, Cloud (Google Drive) & Clé IA -->
       <div class="card">
-        <h2>2. Options d'Envoi (Mail, Cloud Drive &amp; Clé IA)</h2>
+        <h2>2. Options Cloud, Mail &amp; Clé IA Gemini</h2>
         <p class="card-desc">
-          Enregistre ton adresse e-mail pour recevoir ou partager tes rapports PDF, ou envoie-les directement dans ton Cloud (Google Drive) via le partage natif Android / Apple.
+          Le bouton bleu <strong>Cloud</strong> en haut ouvre le partage natif de ton téléphone (Google Drive, Gmail, WhatsApp) avec le PDF attaché. Le bouton orange <strong>PDF</strong> l'enregistre directement.
         </p>
         <div class="form-row">
           <div class="field">
-            <label>Adresse e-mail destinataire (enregistrée)</label>
+            <label>Adresse e-mail destinataire (enregistrée dans tes options)</label>
             <input type="email" id="userEmailInput" value="" placeholder="Ex: mon.adresse@gmail.com" oninput="saveUserSettings()">
           </div>
         </div>
@@ -555,20 +688,14 @@
             <input type="password" id="geminiApiKeyInput" value="" placeholder="Colle ta clé API Gemini ici..." oninput="saveUserSettings()">
           </div>
         </div>
-        <input type="hidden" id="cloudWebhookInput" value="">
 
         <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
           <button type="button" class="btn-green full-width" onclick="sharePDFNativeCloudOrMail()">
-            ☁️ Envoyer PDF vers Cloud (Drive) / Mail (Partage natif)
+            ☁️ Partager PDF vers Cloud (Drive) / Mail / WhatsApp
           </button>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-            <button type="button" class="btn-outline full-width" onclick="sendPDFBySavedEmail()">
-              ✉️ Préparer Mail
-            </button>
-            <button type="button" class="btn-outline full-width" onclick="downloadPDFDirect()">
-              💾 Enregistrer PDF
-            </button>
-          </div>
+          <button type="button" class="btn-outline full-width" onclick="sendPDFBySavedEmail()">
+            ✉️ Envoyer par Mail à l'adresse enregistrée
+          </button>
         </div>
       </div>
     </div>
@@ -623,11 +750,6 @@
           <div class="sub" id="kpiRestSub">0 anomalie détectée</div>
         </div>
       </div>
-
-      <div style="margin-top: 16px; display:flex; flex-wrap:wrap; gap:10px;">
-        <button type="button" class="btn-outline" onclick="switchTab(5)">🛡️ Voir le détail Audit &amp; Traçabilité</button>
-        <button type="button" class="btn-green" onclick="openExportModal()">📤 Exporter / Envoyer le PDF</button>
-      </div>
     </div>
   </section>
 
@@ -641,43 +763,43 @@
       <div class="counters-grid-wide">
         <div class="field">
           <label>RX — Jours de repos</label>
-          <input type="number" id="cnt_RX" value="" placeholder="0" oninput="recalculateAll()">
+          <input type="number" id="cnt_RX" value="" placeholder="0" oninput="recalculateAll(); saveStateToLocal(true);">
         </div>
         <div class="field">
           <label>NMBS — Congés SNCB</label>
-          <input type="number" id="cnt_NMBS" value="" placeholder="0" oninput="recalculateAll()">
+          <input type="number" id="cnt_NMBS" value="" placeholder="0" oninput="recalculateAll(); saveStateToLocal(true);">
         </div>
         <div class="field">
           <label>REC — Heures de récup. (h)</label>
-          <input type="number" step="0.1" id="cnt_REC" value="" placeholder="0" oninput="recalculateAll()">
+          <input type="number" step="0.1" id="cnt_REC" value="" placeholder="0" oninput="recalculateAll(); saveStateToLocal(true);">
         </div>
         <div class="field">
           <label>WKD — Repos de week-end</label>
-          <input type="number" id="cnt_WKD" value="" placeholder="0" oninput="recalculateAll()">
+          <input type="number" id="cnt_WKD" value="" placeholder="0" oninput="recalculateAll(); saveStateToLocal(true);">
         </div>
         <div class="field">
           <label>ZZ — Jours de maladie</label>
-          <input type="number" id="cnt_ZZ" value="" placeholder="0" oninput="recalculateAll()">
+          <input type="number" id="cnt_ZZ" value="" placeholder="0" oninput="recalculateAll(); saveStateToLocal(true);">
         </div>
         <div class="field">
           <label>ZB — Congé sans solde 45+</label>
-          <input type="number" id="cnt_ZB" value="" placeholder="0" oninput="recalculateAll()">
+          <input type="number" id="cnt_ZB" value="" placeholder="0" oninput="recalculateAll(); saveStateToLocal(true);">
         </div>
         <div class="field">
           <label>BLH — Solde congés légaux</label>
-          <input type="number" id="cnt_BLH" value="" placeholder="0" oninput="recalculateAll()">
+          <input type="number" id="cnt_BLH" value="" placeholder="0" oninput="recalculateAll(); saveStateToLocal(true);">
         </div>
         <div class="field">
           <label>BELH — Congés extralégaux</label>
-          <input type="number" step="0.5" id="cnt_BELH" value="" placeholder="0" oninput="recalculateAll()">
+          <input type="number" step="0.5" id="cnt_BELH" value="" placeholder="0" oninput="recalculateAll(); saveStateToLocal(true);">
         </div>
         <div class="field">
           <label>BTH — Congés reportés N-1</label>
-          <input type="number" id="cnt_BTH" value="" placeholder="0" oninput="recalculateAll()">
+          <input type="number" id="cnt_BTH" value="" placeholder="0" oninput="recalculateAll(); saveStateToLocal(true);">
         </div>
         <div class="field">
           <label>BTULH — Congés non rémunérés</label>
-          <input type="number" id="cnt_BTULH" value="" placeholder="0" oninput="recalculateAll()">
+          <input type="number" id="cnt_BTULH" value="" placeholder="0" oninput="recalculateAll(); saveStateToLocal(true);">
         </div>
       </div>
 
@@ -795,23 +917,20 @@
 <!-- Fenêtre modale Export PDF (Cloud Drive / Mail / Téléphone) -->
 <div id="exportModal" class="modal-overlay" onclick="if(event.target===this)closeExportModal()">
   <div class="card" style="max-width:380px;">
-    <h2>📤 Exporter le Rapport PDF</h2>
+    <h2>☁️ Envoi Cloud / Mail</h2>
     <p class="card-desc">
-      Choisis comment envoyer ou enregistrer ton rapport de conformité PDF :
+      Choisis comment envoyer ou enregistrer ton rapport PDF :
     </p>
     <div style="background:#0b1120; border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:12px; font-size:0.78rem;">
       <div style="color:var(--muted);">Dossier Cloud recommandé :</div>
       <div id="modalCloudPath" style="color:var(--accent); font-weight:700; margin-top:2px;">Travail / 2026 / 11 - Novembre</div>
     </div>
     <div style="display:flex; flex-direction:column; gap:8px;">
-      <button type="button" class="btn-green full-width" onclick="sharePDFNativeCloudOrMail()">
-        ☁️ Partager vers Cloud (Google Drive) / Mail
-      </button>
-      <button type="button" class="btn-outline full-width" onclick="sendPDFBySavedEmail()">
-        ✉️ Ouvrir Mail (adresse enregistrée)
+      <button type="button" class="btn-green full-width" onclick="sendPDFBySavedEmail()">
+        ✉️ Envoyer par Mail (adresse enregistrée)
       </button>
       <button type="button" class="btn-outline full-width" onclick="downloadPDFDirect()">
-        💾 Télécharger sur le téléphone
+        💾 Télécharger le PDF sur l'appareil
       </button>
       <button type="button" class="btn-amber full-width" style="margin-top:4px;" onclick="closeExportModal()">
         Fermer
@@ -850,8 +969,8 @@ let scheduleData = [];
 let lastComputedReport = null;
 let currentScheduleFilter = 'all';
 
-const STORAGE_KEY = 'rb_railvigie_state_v5';
-const SETTINGS_KEY = 'rb_railvigie_settings_v5';
+const STORAGE_KEY = 'rb_railvigie_state_v6';
+const SETTINGS_KEY = 'rb_railvigie_settings_v6';
 const DAY_NAMES = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 const CODES = ['BVTS', 'RX', 'OO', 'ELH', 'REC', 'WKD', 'ZZ', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH', 'NMBS', '-'];
 const MONTH_FOLDERS = {
@@ -875,12 +994,11 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// Initialisation de PDF.js Worker si disponible
 if (typeof window.pdfjsLib !== 'undefined') {
   window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 }
 
-// 1. Navigation par Onglets (Barre du bas)
+// 1. Navigation par Onglets (Barre en bas)
 function switchTab(tabIndex) {
   for (let i = 1; i <= 5; i++) {
     const btn = document.getElementById('tabBtn-' + i);
@@ -921,13 +1039,91 @@ function applyRowFilter() {
   });
 }
 
-// 3. Sauvegarde des options (Email, Clé Gemini, Webhook Cloud)
+// 3. Sauvegarde locale (Bouton Disquette style RailSynthèse) & Options
+function triggerManualSave() {
+  saveStateToLocal(true);
+  saveUserSettings();
+  const badge = document.getElementById('saveStatusBadge');
+  if (badge) {
+    badge.textContent = 'Sauvegardé';
+    badge.className = 'saved-pill';
+    badge.style.transform = 'scale(1.08)';
+    setTimeout(() => { badge.style.transform = 'scale(1)'; }, 220);
+  }
+}
+
+function saveStateToLocal(showBadge) {
+  try {
+    const state = {
+      month: document.getElementById('monthSelect').value,
+      year: document.getElementById('yearInput').value,
+      driverInput: document.getElementById('driverInput').value,
+      e500FullName: document.getElementById('e500FullName').value,
+      driverMatricule: document.getElementById('driverMatricule').value,
+      prevQuarterHours: document.getElementById('prevQuarterHours').value,
+      quarterWeeks: document.getElementById('quarterWeeks').value,
+      counters: {
+        RX: document.getElementById('cnt_RX').value,
+        NMBS: document.getElementById('cnt_NMBS').value,
+        REC: document.getElementById('cnt_REC').value,
+        WKD: document.getElementById('cnt_WKD').value,
+        ZZ: document.getElementById('cnt_ZZ').value,
+        ZB: document.getElementById('cnt_ZB').value,
+        BLH: document.getElementById('cnt_BLH').value,
+        BELH: document.getElementById('cnt_BELH').value,
+        BTH: document.getElementById('cnt_BTH').value,
+        BTULH: document.getElementById('cnt_BTULH').value
+      },
+      scheduleData: scheduleData
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    if (showBadge) {
+      const badge = document.getElementById('saveStatusBadge');
+      if (badge) {
+        badge.textContent = 'Sauvegardé';
+        badge.className = 'saved-pill';
+      }
+    }
+  } catch (e) {}
+}
+
+function loadStateFromLocal() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    if (!s || !Array.isArray(s.scheduleData) || s.scheduleData.length === 0) return false;
+
+    if (s.month) document.getElementById('monthSelect').value = String(s.month);
+    if (s.year) document.getElementById('yearInput').value = String(s.year);
+    document.getElementById('driverInput').value = s.driverInput || '';
+    document.getElementById('e500FullName').value = s.e500FullName || '';
+    document.getElementById('driverMatricule').value = s.driverMatricule || '';
+    document.getElementById('prevQuarterHours').value = s.prevQuarterHours || '';
+    document.getElementById('quarterWeeks').value = s.quarterWeeks || '13';
+
+    if (s.counters) {
+      ['RX', 'NMBS', 'REC', 'WKD', 'ZZ', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH'].forEach(c => {
+        const el = document.getElementById('cnt_' + c);
+        if (el) el.value = s.counters[c] !== undefined ? s.counters[c] : '';
+      });
+    }
+    scheduleData = s.scheduleData;
+    checkDriverMatch();
+    updateCloudPathPreview();
+    renderTable();
+    recalculateAll();
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 function saveUserSettings() {
   try {
     const settings = {
       email: (document.getElementById('userEmailInput').value || '').trim(),
-      geminiKey: (document.getElementById('geminiApiKeyInput').value || '').trim(),
-      cloudWebhook: (document.getElementById('cloudWebhookInput').value || '').trim()
+      geminiKey: (document.getElementById('geminiApiKeyInput').value || '').trim()
     };
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     updateCloudPathPreview();
@@ -941,7 +1137,6 @@ function loadUserSettings() {
     const s = JSON.parse(raw);
     if (s.email && document.getElementById('userEmailInput')) document.getElementById('userEmailInput').value = s.email;
     if (s.geminiKey && document.getElementById('geminiApiKeyInput')) document.getElementById('geminiApiKeyInput').value = s.geminiKey;
-    if (s.cloudWebhook && document.getElementById('cloudWebhookInput')) document.getElementById('cloudWebhookInput').value = s.cloudWebhook;
   } catch (e) {}
 }
 
@@ -956,7 +1151,7 @@ function updateCloudPathPreview() {
   if (el2) el2.textContent = pathText;
 }
 
-// 4. Partage QR Code & Lien 100 % vierge
+// 4. Partage QR Code & Lien 100 % vierge (Bouton QR vert du bandeau supérieur)
 function getCleanShareUrl() {
   const base = window.location.origin + window.location.pathname;
   return base + '?vierge=1';
@@ -1037,6 +1232,15 @@ function normalizeStr(str) {
     .trim();
 }
 
+function updateHeaderSubtitle() {
+  const subEl = document.getElementById('headerDriverSub');
+  if (!subEl) return;
+  const full = (document.getElementById('e500FullName').value || '').trim();
+  const shortName = (document.getElementById('driverInput').value || '').trim();
+  const displayDriver = full || shortName || 'Vierge';
+  subEl.textContent = displayDriver + ' • Lineas / CP 226';
+}
+
 function checkDriverMatch() {
   const rawInput = document.getElementById('driverInput').value;
   const rawTarget = document.getElementById('e500FullName').value;
@@ -1045,8 +1249,9 @@ function checkDriverMatch() {
   const infoEl = document.getElementById('driverMatchInfo');
 
   if (!query) {
-    infoEl.textContent = 'Application 100 % vierge (prête pour partage aux collègues).';
+    infoEl.textContent = 'Application vierge par défaut (prête pour partage aux collègues).';
     infoEl.style.color = 'var(--muted)';
+    updateHeaderSubtitle();
     return true;
   }
 
@@ -1057,12 +1262,14 @@ function checkDriverMatch() {
     }
     infoEl.textContent = 'Identité reconnue : "Rémy Brasseur" ➔ "Rémy Marcel L BRASSEUR".';
     infoEl.style.color = 'var(--green)';
+    updateHeaderSubtitle();
     return true;
   }
 
   if (!target) {
     infoEl.textContent = 'Conducteur actif : ' + rawInput;
     infoEl.style.color = 'var(--green)';
+    updateHeaderSubtitle();
     return true;
   }
 
@@ -1077,6 +1284,7 @@ function checkDriverMatch() {
     infoEl.textContent = 'Attention : "' + rawInput + '" ne correspond pas à "' + document.getElementById('e500FullName').value + '".';
     infoEl.style.color = 'var(--red)';
   }
+  updateHeaderSubtitle();
   return allMatched;
 }
 
@@ -1248,10 +1456,11 @@ function loadOctoberDemo() {
   });
   renderTable();
   recalculateAll();
+  saveStateToLocal(true);
   switchTab(4);
 }
 
-// 7. Rendu de la Grille Mensuelle (sans la colonne inutile du Point 2)
+// 7. Rendu de la Grille Mensuelle
 function renderTable() {
   const tbody = document.getElementById('scheduleBody');
   const m = parseInt(document.getElementById('monthSelect').value, 10);
@@ -1292,6 +1501,7 @@ function updateCell(idx, field, val) {
     if (tr) tr.className = val === 'BVTS' ? 'row-bvts' : (val === 'RX' ? 'row-rx' : (val === 'OO' ? 'row-oo' : ''));
   }
   recalculateAll();
+  saveStateToLocal(true);
 }
 
 function updateSecondShift(idx, val) {
@@ -1304,6 +1514,7 @@ function updateSecondShift(idx, val) {
     scheduleData[idx].end2 = '';
   }
   recalculateAll();
+  saveStateToLocal(true);
 }
 
 // 8. Moteur de Calcul Réglementaire CP 226
@@ -1712,17 +1923,12 @@ function recalculateAll() {
   const errCount = restAuditEvents.filter(e => e.level === 'err').length;
   const kpiAnomEl = document.getElementById('kpiAnomalies');
   const kpiRestSub = document.getElementById('kpiRestSub');
-  const quickBanner = document.getElementById('quickStatusBanner');
   const tabBadge = document.getElementById('tabBadgeAnom');
 
   if (errCount > 0) {
     kpiAnomEl.textContent = errCount + ' Anomalie(s)';
     kpiAnomEl.style.color = 'var(--red)';
     kpiRestSub.textContent = 'Voir Onglet 5 (Audit)';
-    if (quickBanner) {
-      quickBanner.className = 'badge b-err';
-      quickBanner.textContent = '⚠️ ' + errCount + ' Anomalie(s)';
-    }
     if (tabBadge) {
       tabBadge.style.display = 'inline-block';
       tabBadge.textContent = String(errCount);
@@ -1731,10 +1937,6 @@ function recalculateAll() {
     kpiAnomEl.textContent = 'Conforme';
     kpiAnomEl.style.color = 'var(--green)';
     kpiRestSub.textContent = 'Tous les intervalles & repos sont valides';
-    if (quickBanner) {
-      quickBanner.className = 'badge b-ok';
-      quickBanner.textContent = '✓ Conforme';
-    }
     if (tabBadge) {
       tabBadge.style.display = 'none';
     }
@@ -1761,6 +1963,7 @@ function recalculateAll() {
     : '<div class="log-item info">Aucune heure supplémentaire ni prestation de week-end sur la période.</div>';
 
   applyRowFilter();
+  updateHeaderSubtitle();
 
   lastComputedReport = {
     month: m,
@@ -1820,13 +2023,13 @@ async function handleScheduleFileImport(event) {
         });
       }
 
-      // Si une clé Gemini est présente, on peut affiner via Gemini, sinon extraction locale directe
       if (apiKey) {
         statusEl.textContent = '⏳ Extraction précise de ta ligne E500 via IA Gemini...';
         const parsedByAi = await parseScheduleWithGeminiText(fullText, apiKey);
         if (parsedByAi) {
           statusEl.style.color = 'var(--green)';
           statusEl.textContent = '✓ PDF E500 importé avec succès ! Vérifie l\'onglet 4 (Planning).';
+          saveStateToLocal(true);
           switchTab(4);
           return;
         }
@@ -1836,6 +2039,7 @@ async function handleScheduleFileImport(event) {
       if (count > 0) {
         statusEl.style.color = 'var(--green)';
         statusEl.textContent = '✓ PDF lu (' + count + ' jour(s) détecté(s)) ! Vérifie l\'onglet 4 (Planning).';
+        saveStateToLocal(true);
         switchTab(4);
       } else {
         statusEl.style.color = 'var(--orange)';
@@ -1848,7 +2052,7 @@ async function handleScheduleFileImport(event) {
   } else if (isImage) {
     if (!apiKey) {
       statusEl.style.color = 'var(--orange)';
-      statusEl.textContent = '⚠️ Pour lire une image / capture de ta ligne, renseigne ta clé API Gemini dans le champ juste en dessous.';
+      statusEl.textContent = '⚠️ Pour lire une image / capture de ta ligne, renseigne ta clé API Gemini dans le bloc 2 ci-dessous.';
       return;
     }
     const reader = new FileReader();
@@ -1860,6 +2064,7 @@ async function handleScheduleFileImport(event) {
         if (ok) {
           statusEl.style.color = 'var(--green)';
           statusEl.textContent = '✓ Image de ta ligne importée avec succès !';
+          saveStateToLocal(true);
           switchTab(4);
         } else {
           statusEl.style.color = 'var(--red)';
@@ -1965,7 +2170,6 @@ function parseLocalScheduleText(text) {
     document.getElementById('driverMatricule').value = matMatch[1];
   }
   let updatedCount = 0;
-  // Recherche de motifs "Jour Code HH:MM HH:MM" ou lignes numérotées
   const lines = text.split(/\n+/);
   lines.forEach(line => {
     const m = line.match(/\b([1-9]|[12]\d|3[01])\b\s+(BVTS|RX|OO|ELH|REC|WKD|ZZ|ZB|BLH|BELH|BTH|BTULH|NMBS)\b(?:\s+(\d{1,2}[:hH]\d{2})\s*[-àa]?\s*(\d{1,2}[:hH]\d{2}))?/i);
@@ -1990,7 +2194,7 @@ function parseLocalScheduleText(text) {
   return updatedCount;
 }
 
-// 10. Construction du document PDF + Partage Mail & Cloud (Google Drive)
+// 10. Construction du document PDF + Boutons Cloud & PDF du bandeau supérieur
 function buildAuditJsPDF() {
   recalculateAll();
   const { jsPDF } = window.jspdf;
@@ -2053,13 +2257,12 @@ function downloadPDFDirect() {
   doc.save(fileName);
 }
 
-// Partage Natif Android & iOS (Envoi vers Google Drive, OneDrive, Gmail, WhatsApp avec le PDF joint)
+// Bouton bleu "Cloud" : Partage Natif Android & iOS (Drive, Mail, WhatsApp avec le fichier PDF joint)
 async function sharePDFNativeCloudOrMail() {
   const { doc, fileName, rep, monthFolder } = buildAuditJsPDF();
   const savedEmail = (document.getElementById('userEmailInput').value || '').trim();
   const cloudPath = 'Travail / ' + rep.year + ' / ' + monthFolder;
 
-  // Copie automatique de l'adresse mail ou du dossier cible dans le presse-papiers pour faciliter l'envoi
   if (savedEmail && navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(savedEmail).catch(() => {});
   }
@@ -2071,7 +2274,7 @@ async function sharePDFNativeCloudOrMail() {
     try {
       await navigator.share({
         title: 'RB RailVigie — ' + monthFolder + ' ' + rep.year,
-        text: 'Rapport RB RailVigie (' + rep.driverName + ').\nDossier Cloud cible : ' + cloudPath + (savedEmail ? '\nDestinataire : ' + savedEmail : ''),
+        text: 'Rapport RB RailVigie (' + rep.driverName + ').\nDossier Cloud : ' + cloudPath + (savedEmail ? '\nDestinataire : ' + savedEmail : ''),
         files: [pdfFile]
       });
       return;
@@ -2079,10 +2282,9 @@ async function sharePDFNativeCloudOrMail() {
       if (e.name === 'AbortError') return;
     }
   }
-  doc.save(fileName);
+  openExportModal();
 }
 
-// Envoi par Email avec adresse pré-enregistrée dans les options
 function sendPDFBySavedEmail() {
   const { doc, fileName, rep, monthFolder } = buildAuditJsPDF();
   const savedEmail = (document.getElementById('userEmailInput').value || '').trim();
@@ -2091,8 +2293,8 @@ function sendPDFBySavedEmail() {
   const subject = encodeURIComponent('RB RailVigie — Rapport ' + monthFolder + ' ' + rep.year + ' (' + rep.driverName + ')');
   const body = encodeURIComponent(
     'Bonjour,\n\n' +
-    'Veuillez trouver en pièce jointe le rapport PDF "' + fileName + '" (qui vient d\'être enregistré sur l\'appareil).\n\n' +
-    ' Synthèse ' + monthFolder + ' ' + rep.year + ' :\n' +
+    'Veuillez trouver en pièce jointe le rapport PDF "' + fileName + '" (enregistré sur l\'appareil).\n\n' +
+    'Synthèse ' + monthFolder + ' ' + rep.year + ' :\n' +
     '- Conducteur : ' + rep.driverName + '\n' +
     '- Heures prestées : ' + formatMinToHHMM(rep.totalWorkMin) + '\n' +
     '- Week-end (Sam / Dim) : ' + formatMinToHHMM(rep.totalSatMin) + ' / ' + formatMinToHHMM(rep.totalSunMin) + '\n' +
@@ -2102,12 +2304,17 @@ function sendPDFBySavedEmail() {
   window.location.href = 'mailto:' + encodeURIComponent(savedEmail) + '?subject=' + subject + '&body=' + body;
 }
 
-// Démarrage 100 % vierge + chargement des options personnelles (Email / Clé API)
+// Au démarrage : si ?vierge=1 (QR Code collègue) -> 100 % vierge. Sinon charge la sauvegarde locale ou ouvre vierge.
 window.addEventListener('DOMContentLoaded', () => {
   loadUserSettings();
-  resetBlankMonth();
   if (window.location.search.includes('vierge=1')) {
+    resetBlankMonth();
     window.history.replaceState({}, document.title, window.location.pathname);
+  } else {
+    const loaded = loadStateFromLocal();
+    if (!loaded) {
+      resetBlankMonth();
+    }
   }
 });
 </script>
