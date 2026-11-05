@@ -1987,118 +1987,303 @@ function recalculateAll() {
   };
 }
 
-// 9. Importation intelligente PDF E500 & Image (Local pdf.js + IA Gemini optionnelle)
+// 9. Importation intelligente PDF E500 & Image (Filtrage strict Nom + Prénom & Multi-modèles Gemini)
+function getDriverFilterTokens() {
+  const rawInput = (document.getElementById('driverInput').value || '').trim();
+  const rawFull = (document.getElementById('e500FullName').value || '').trim();
+  const combined = normalizeStr(rawInput || rawFull || 'REMY BRASSEUR');
+  const tokens = combined.split(/\s+/).filter(t => t.length >= 2);
+  // Si on cherche Brasseur sans prénom précisé, on impose REMY + BRASSEUR pour ne jamais confondre les 2 BRASSEUR
+  if (tokens.length === 1 && tokens[0] === 'BRASSEUR') {
+    return ['REMY', 'BRASSEUR'];
+  }
+  return tokens.length > 0 ? tokens : ['REMY', 'BRASSEUR'];
+}
+
+function lineMatchesDriverStrict(lineStr, requiredTokens) {
+  const norm = normalizeStr(lineStr);
+  // Si la ligne contient BRASSEUR mais que REMY est requis, on vérifie que TOUS les tokens (Nom + Prénom) sont présents
+  return requiredTokens.every(tok => norm.includes(tok));
+}
+
+function extractDriverSectionFromPdfPages(pagesLines, requiredTokens) {
+  let matchedBlocks = [];
+  for (let p = 0; p < pagesLines.length; p++) {
+    const lines = pagesLines[p];
+    const headerLines = lines.slice(0, Math.min(12, lines.length));
+    for (let i = 0; i < lines.length; i++) {
+      // Fenêtre de 2 lignes consécutives au cas où Nom et Prénom soient sur 2 lignes proches
+      const window2 = lines[i] + ' ' + (lines[i + 1] || '');
+      if (lineMatchesDriverStrict(window2, requiredTokens)) {
+        const start = Math.max(0, i - 4);
+        const end = Math.min(lines.length, i + 45);
+        const excerpt = lines.slice(start, end).join('\n');
+        matchedBlocks.push('=== PAGE ' + (p + 1) + ' (EN-TÊTE) ===\n' + headerLines.join('\n') + '\n=== LIGNE CONDUCTEUR CIBLE ===\n' + excerpt);
+        i += 20; // Éviter les doublons sur la même zone
+      }
+    }
+  }
+  return matchedBlocks.join('\n\n');
+}
+
+function compressImageFileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Impossible de lire le fichier image.'));
+    reader.onload = function(e) {
+      const dataUrl = e.target.result;
+      const img = new Image();
+      img.onload = function() {
+        try {
+          const maxDim = 2200;
+          let w = img.width || 1200;
+          let h = img.height || 600;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          const jpegUrl = canvas.toDataURL('image/jpeg', 0.90);
+          resolve({
+            base64Data: jpegUrl.split(',')[1],
+            mimeType: 'image/jpeg'
+          });
+        } catch (convErr) {
+          resolve({
+            base64Data: dataUrl.split(',')[1],
+            mimeType: file.type || 'image/jpeg'
+          });
+        }
+      };
+      img.onerror = function() {
+        resolve({
+          base64Data: dataUrl.split(',')[1],
+          mimeType: file.type || 'image/jpeg'
+        });
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function callGeminiWithFallback(parts, apiKey) {
+  const cleanKey = apiKey.replace(/["'\s]/g, '');
+  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+  let lastErrorMsg = 'Réponse vide de Gemini.';
+
+  for (let m = 0; m < models.length; m++) {
+    const modelName = models[m];
+    try {
+      const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + encodeURIComponent(cleanKey);
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: parts }],
+          generationConfig: { temperature: 0.1 }
+        })
+      });
+      const json = await resp.json();
+      if (!resp.ok || json.error) {
+        lastErrorMsg = (json.error && json.error.message) ? json.error.message : ('Erreur HTTP ' + resp.status);
+        // Si la clé API elle-même est invalide, inutile de tester les autres modèles
+        if (resp.status === 400 && /API_KEY_INVALID|key not valid/i.test(lastErrorMsg)) {
+          throw new Error('Clé API Gemini invalide : vérifie qu\'il n\'y a pas d\'espace en trop.');
+        }
+        continue;
+      }
+      const candidate = json.candidates && json.candidates[0];
+      const rawText = candidate && candidate.content && candidate.content.parts && candidate.content.parts.map(p => p.text || '').join('\n');
+      if (!rawText) {
+        lastErrorMsg = 'Aucune donnée renvoyée par ' + modelName;
+        continue;
+      }
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        lastErrorMsg = 'Format non reconnu renvoyé par ' + modelName;
+        continue;
+      }
+      return JSON.parse(jsonMatch[0]);
+    } catch (err) {
+      lastErrorMsg = err.message || String(err);
+      if (/Clé API Gemini invalide/i.test(lastErrorMsg)) {
+        throw err;
+      }
+    }
+  }
+  throw new Error(lastErrorMsg);
+}
+
 async function handleScheduleFileImport(event) {
-  const file = event.target.files[0];
+  const file = event.target.files && event.target.files[0];
   if (!file) return;
   const statusEl = document.getElementById('importStatusMsg');
   const apiKey = (document.getElementById('geminiApiKeyInput').value || '').trim();
   const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-  const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp)$/i.test(file.name);
+  const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|bmp|heic)$/i.test(file.name);
+
+  const requiredTokens = getDriverFilterTokens();
+  const targetLabel = requiredTokens.join(' ');
 
   statusEl.style.color = 'var(--accent)';
-  statusEl.textContent = '⏳ Analyse de "' + file.name + '" en cours...';
+  statusEl.textContent = '⏳ Analyse de "' + file.name + '" (Filtre strict : ' + targetLabel + ')...';
 
   if (isPdf) {
     try {
       if (typeof window.pdfjsLib === 'undefined') {
-        throw new Error('Librairie PDF non chargée. Vérifie ta connexion internet.');
+        throw new Error('Librairie PDF.js non chargée. Vérifie ta connexion internet.');
       }
       const ab = await file.arrayBuffer();
       const pdf = await window.pdfjsLib.getDocument({ data: ab }).promise;
+      const pagesLines = [];
       let fullText = '';
+
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const tc = await page.getTextContent();
-        const pageLines = {};
+        const pageMap = {};
         tc.items.forEach(it => {
-          const yKey = Math.round(it.transform[5] / 4) * 4;
-          if (!pageLines[yKey]) pageLines[yKey] = [];
-          pageLines[yKey].push({ x: it.transform[4], str: it.str });
+          const yKey = Math.round(it.transform[5] / 3) * 3;
+          if (!pageMap[yKey]) pageMap[yKey] = [];
+          pageMap[yKey].push({ x: it.transform[4], str: it.str });
         });
-        const sortedY = Object.keys(pageLines).map(Number).sort((a, b) => b - a);
-        sortedY.forEach(y => {
-          const rowStr = pageLines[y].sort((a, b) => a.x - b.x).map(i => i.str).join(' ');
-          fullText += rowStr + '\n';
-        });
+        const sortedY = Object.keys(pageMap).map(Number).sort((a, b) => b - a);
+        const linesOfPage = sortedY.map(y =>
+          pageMap[y].sort((a, b) => a.x - b.x).map(i => i.str).join(' ')
+        );
+        pagesLines.push(linesOfPage);
+        fullText += linesOfPage.join('\n') + '\n';
       }
 
+      // 1. Filtrage strict sur Nom ET Prénom (ex: REMY + BRASSEUR) pour écarter tout homonyme BRASSEUR
+      const filteredText = extractDriverSectionFromPdfPages(pagesLines, requiredTokens);
+
+      // 2. Si une clé Gemini est enregistrée, on analyse la section filtrée (ou à défaut le document)
       if (apiKey) {
-        statusEl.textContent = '⏳ Extraction précise de ta ligne E500 via IA Gemini...';
-        const parsedByAi = await parseScheduleWithGeminiText(fullText, apiKey);
-        if (parsedByAi) {
-          statusEl.style.color = 'var(--green)';
-          statusEl.textContent = '✓ PDF E500 importé avec succès ! Vérifie l\'onglet 4 (Planning).';
-          saveStateToLocal(true);
-          switchTab(4);
+        statusEl.textContent = '⏳ Lecture IA Gemini pour ' + targetLabel + '...';
+        try {
+          const textForAi = filteredText ? filteredText : fullText.slice(0, 30000);
+          const parsedByAi = await parseScheduleWithGeminiText(textForAi, apiKey, requiredTokens);
+          if (parsedByAi) {
+            statusEl.style.color = 'var(--green)';
+            statusEl.textContent = '✓ PDF E500 importé avec succès pour ' + targetLabel + ' !';
+            saveStateToLocal(true);
+            switchTab(4);
+            event.target.value = '';
+            return;
+          }
+        } catch (aiErr) {
+          // Si Gemini échoue, on tente l'extraction locale avant d'afficher l'erreur exacte de Gemini
+          const localCnt = parseLocalScheduleText(filteredText || fullText, requiredTokens);
+          if (localCnt > 0) {
+            statusEl.style.color = 'var(--green)';
+            statusEl.textContent = '✓ PDF importé localement (' + localCnt + ' jours pour ' + targetLabel + ').';
+            saveStateToLocal(true);
+            switchTab(4);
+          } else {
+            statusEl.style.color = 'var(--red)';
+            statusEl.textContent = '❌ Erreur IA Gemini sur le PDF : ' + aiErr.message;
+          }
+          event.target.value = '';
           return;
         }
       }
 
-      const count = parseLocalScheduleText(fullText);
+      // 3. Sans clé API Gemini : analyse locale filtrée sur Nom + Prénom
+      const count = parseLocalScheduleText(filteredText || fullText, requiredTokens);
       if (count > 0) {
         statusEl.style.color = 'var(--green)';
-        statusEl.textContent = '✓ PDF lu (' + count + ' jour(s) détecté(s)) ! Vérifie l\'onglet 4 (Planning).';
+        statusEl.textContent = '✓ PDF lu (' + count + ' jour(s) détecté(s) pour ' + targetLabel + ') !';
         saveStateToLocal(true);
         switchTab(4);
+      } else if (!filteredText) {
+        statusEl.style.color = 'var(--orange)';
+        statusEl.textContent = '⚠️ Aucun conducteur "' + targetLabel + '" trouvé dans ce PDF (homonymes exclus).';
       } else {
         statusEl.style.color = 'var(--orange)';
-        statusEl.textContent = '⚠️ Texte PDF lu, mais format E500 complexe : ajoute une clé API Gemini ci-dessous pour une lecture IA automatique.';
+        statusEl.textContent = '⚠️ Ligne "' + targetLabel + '" trouvée dans le PDF, mais renseigne ta clé Gemini (bloc 2) pour décoder toute la grille E500.';
       }
     } catch (err) {
       statusEl.style.color = 'var(--red)';
       statusEl.textContent = '❌ Erreur PDF : ' + (err.message || 'Fichier non lisible');
     }
+    event.target.value = '';
   } else if (isImage) {
     if (!apiKey) {
       statusEl.style.color = 'var(--orange)';
-      statusEl.textContent = '⚠️ Pour lire une image / capture de ta ligne, renseigne ta clé API Gemini dans le bloc 2 ci-dessous.';
+      statusEl.textContent = '⚠️ Pour lire une image de ta ligne, renseigne ta clé API Gemini dans le bloc 2 à droite.';
+      event.target.value = '';
       return;
     }
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-      try {
-        const base64Data = e.target.result.split(',')[1];
-        statusEl.textContent = '⏳ Lecture de l\'image de ta ligne par Gemini...';
-        const ok = await parseScheduleWithGeminiImage(base64Data, file.type || 'image/jpeg', apiKey);
-        if (ok) {
-          statusEl.style.color = 'var(--green)';
-          statusEl.textContent = '✓ Image de ta ligne importée avec succès !';
-          saveStateToLocal(true);
-          switchTab(4);
-        } else {
-          statusEl.style.color = 'var(--red)';
-          statusEl.textContent = '❌ Impossible d\'extraire les horaires de cette image.';
-        }
-      } catch (err) {
+    try {
+      statusEl.textContent = '⏳ Préparation de l\'image et lecture Gemini pour ' + targetLabel + '...';
+      const imgObj = await compressImageFileToBase64(file);
+      const ok = await parseScheduleWithGeminiImage(imgObj.base64Data, imgObj.mimeType, apiKey, requiredTokens);
+      if (ok) {
+        statusEl.style.color = 'var(--green)';
+        statusEl.textContent = '✓ Image de la ligne importée avec succès !';
+        saveStateToLocal(true);
+        switchTab(4);
+      } else {
         statusEl.style.color = 'var(--red)';
-        statusEl.textContent = '❌ Erreur lecture image : ' + (err.message || '');
+        statusEl.textContent = '❌ Aucune prestation trouvée sur cette image.';
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      statusEl.style.color = 'var(--red)';
+      statusEl.textContent = '❌ Erreur lecture image : ' + (err.message || 'Vérifie ta clé API Gemini');
+    }
+    event.target.value = '';
   }
 }
 
-function applyExtractedJsonToSchedule(data) {
+function applyExtractedJsonToSchedule(data, requiredTokens) {
   if (!data) return false;
-  if (data.fullName) document.getElementById('e500FullName').value = data.fullName;
-  if (data.matricule) document.getElementById('driverMatricule').value = data.matricule;
+  // Vérification de sécurité anti-homonyme si un autre nom BRASSEUR était renvoyé
+  if (data.fullName) {
+    const normName = normalizeStr(data.fullName);
+    if (normName.includes('BRASSEUR') && requiredTokens.includes('REMY') && !normName.includes('REMY') && !normName.includes('MARCEL')) {
+      throw new Error('Ligne ignorée car elle correspond à un autre BRASSEUR (' + data.fullName + ').');
+    }
+    document.getElementById('e500FullName').value = data.fullName;
+  } else if (requiredTokens.includes('REMY') && requiredTokens.includes('BRASSEUR')) {
+    document.getElementById('e500FullName').value = 'Rémy Marcel L BRASSEUR';
+  }
+  if (data.matricule) {
+    document.getElementById('driverMatricule').value = String(data.matricule);
+  }
   if (data.counters && typeof data.counters === 'object') {
     ['RX', 'NMBS', 'REC', 'WKD', 'ZZ', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH'].forEach(k => {
-      if (data.counters[k] !== undefined && data.counters[k] !== null) {
+      if (data.counters[k] !== undefined && data.counters[k] !== null && data.counters[k] !== '') {
         const el = document.getElementById('cnt_' + k);
         if (el) el.value = String(data.counters[k]);
       }
     });
   }
-  if (Array.isArray(data.days)) {
+  if (Array.isArray(data.days) && data.days.length > 0) {
+    const m = parseInt(document.getElementById('monthSelect').value, 10);
+    const y = parseInt(document.getElementById('yearInput').value, 10);
+    scheduleData = createBlankSchedule(m, y);
+
     data.days.forEach(item => {
       const d = parseInt(item.day, 10);
       const row = scheduleData.find(r => r.day === d);
       if (row) {
-        row.code = CODES.includes(item.code) ? item.code : (item.start ? 'BVTS' : '-');
-        row.start = item.start || '';
-        row.end = item.end || '';
+        const rawCode = String(item.code || '').toUpperCase().trim();
+        row.code = CODES.includes(rawCode) ? rawCode : (item.start ? 'BVTS' : '-');
+        row.start = (item.start || '').replace(/[hH.]/, ':');
+        row.end = (item.end || '').replace(/[hH.]/, ':');
         row.lit = ['none', 'aller', 'retour', '2'].includes(item.lit) ? item.lit : 'none';
         row.trajetMin = parseInt(item.trajetMin || 0, 10) || 0;
         row.note = item.note || '';
@@ -2112,56 +2297,46 @@ function applyExtractedJsonToSchedule(data) {
   return false;
 }
 
-async function parseScheduleWithGeminiText(extractedText, apiKey) {
-  const targetDriver = document.getElementById('driverInput').value || document.getElementById('e500FullName').value || 'Rémy Marcel L BRASSEUR';
-  const prompt = 'Tu es un assistant ferroviaire Lineas/SIBELIT. Extrais uniquement la ligne de planning E500 de "' + targetDriver + '" (ou Rémy Brasseur) à partir de ce texte.\n' +
-    'Renvoie UNIQUEMENT un objet JSON valide de la forme : {"fullName":"...","matricule":"...","counters":{"RX":0,"REC":0,"WKD":0,"ZB":0,"BELH":0},"days":[{"day":1,"code":"BVTS","start":"13:00","end":"22:35","lit":"none","trajetMin":0}]}.\n' +
-    'Codes autorisés: BVTS, RX, OO, ELH, REC, WKD, ZZ, ZB, BLH, BELH, BTH, BTULH, NMBS, -.\nTexte :\n' + extractedText.slice(0, 28000);
+async function parseScheduleWithGeminiText(extractedText, apiKey, requiredTokens) {
+  const targetName = requiredTokens.join(' ');
+  const prompt = 'Tu es un expert en plannings ferroviaires Lineas / SIBELIT (grille E500).\n' +
+    'ATTENTION : Il existe deux conducteurs nommés "BRASSEUR". Tu dois extraire EXCLUSIVEMENT la ligne qui correspond à la fois au nom ET au prénom : "' + targetName + '" (ex: "Rémy Marcel L BRASSEUR" ou "Rémy BRASSEUR"). Ignore strictement tout autre "BRASSEUR" qui n\'a pas le prénom "' + requiredTokens[0] + '".\n' +
+    'Extrais les compteurs éventuels (RX, NMBS, REC, WKD, ZZ, ZB, BLH, BELH, BTH, BTULH) et les prestations des jours du mois (1 à 31).\n' +
+    '- Si un jour comporte une prestation avec heure de début et heure de fin (ex: 13:00 et 22:35), mets "code":"BVTS", "start":"HH:MM", "end":"HH:MM".\n' +
+    '- Si un jour comporte un découcher (icône lit ou mention hôtel), mets "lit":"aller" sur le 1er jour et "lit":"retour" sur le lendemain.\n' +
+    '- Si un jour est un repos ou congé (RX, OO, ELH, REC, WKD, ZZ, ZB, BLH, BELH, BTH, BTULH, NMBS), indique ce code.\n' +
+    'Renvoie UNIQUEMENT un objet JSON valide de la forme :\n' +
+    '{"fullName":"Rémy Marcel L BRASSEUR","matricule":"899008349","counters":{"RX":118,"REC":27.2,"WKD":2,"ZB":10,"BELH":6.5},"days":[{"day":1,"code":"BVTS","start":"13:00","end":"22:35","lit":"none","trajetMin":0}]}\n\n' +
+    'Texte extrait du PDF :\n' + extractedText.slice(0, 28000);
 
-  const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(apiKey), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: 'application/json' }
-    })
-  });
-  const json = await resp.json();
-  const rawText = json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts[0].text;
-  if (!rawText) return false;
-  const parsed = JSON.parse(rawText.replace(/```json|```/g, '').trim());
-  return applyExtractedJsonToSchedule(parsed);
+  const parsed = await callGeminiWithFallback([{ text: prompt }], apiKey);
+  return applyExtractedJsonToSchedule(parsed, requiredTokens);
 }
 
-async function parseScheduleWithGeminiImage(base64Data, mimeType, apiKey) {
-  const targetDriver = document.getElementById('driverInput').value || document.getElementById('e500FullName').value || 'Rémy Marcel L BRASSEUR';
-  const prompt = 'Extrais les horaires ferroviaires (Lineas E500) visibles sur cette image (pour ' + targetDriver + '). ' +
-    'Renvoie UNIQUEMENT un objet JSON valide de la forme : {"fullName":"...","matricule":"...","counters":{"RX":0,"REC":0,"WKD":0,"ZB":0,"BELH":0},"days":[{"day":1,"code":"BVTS","start":"13:00","end":"22:35","lit":"none","trajetMin":0}]}. ' +
-    'Codes autorisés: BVTS, RX, OO, ELH, REC, WKD, ZZ, ZB, BLH, BELH, BTH, BTULH, NMBS, -.';
+async function parseScheduleWithGeminiImage(base64Data, mimeType, apiKey, requiredTokens) {
+  const targetName = requiredTokens.join(' ');
+  const prompt = 'Tu es un expert en plannings ferroviaires Lineas / SIBELIT (grille E500).\n' +
+    'Cette image montre la ligne d\'horaire mensuel (jours 1 à 31) du conducteur "' + targetName + '" (Rémy Marcel L BRASSEUR).\n' +
+    'Si plusieurs lignes apparaissent, ne traite QUE celle de "' + targetName + '" (vérifie à la fois le nom ET le prénom, ignore tout autre BRASSEUR). Si l\'image ne montre qu\'une seule ligne coupée sans le nom complet, traite cette ligne.\n' +
+    'Pour chaque jour du mois (de 1 à 31) :\n' +
+    '- S\'il y a des heures de prestation (ex: 08:00 15:36 ou 15:55 00:55), mets "code":"BVTS", "start":"HH:MM", "end":"HH:MM".\n' +
+    '- S\'il y a un symbole de lit / découcher hôtel, mets "lit":"aller" sur le service aller et "lit":"retour" sur le service retour.\n' +
+    '- S\'il y a un code de repos ou congé (RX, OO, ELH, REC, WKD, ZZ, ZB, BLH, BELH, BTH, BTULH, NMBS), indique ce code avec start:"" et end:"".\n' +
+    'Extrais aussi les compteurs visibles (RX, NMBS, REC, WKD, ZZ, ZB, BLH, BELH, BTH, BTULH).\n' +
+    'Renvoie UNIQUEMENT un objet JSON valide de la forme :\n' +
+    '{"fullName":"Rémy Marcel L BRASSEUR","matricule":"","counters":{},"days":[{"day":1,"code":"BVTS","start":"13:00","end":"22:35","lit":"none","trajetMin":0}]}';
 
-  const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(apiKey), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{
-        parts: [
-          { text: prompt },
-          { inline_data: { mime_type: mimeType, data: base64Data } }
-        ]
-      }],
-      generationConfig: { responseMimeType: 'application/json' }
-    })
-  });
-  const json = await resp.json();
-  const rawText = json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts[0].text;
-  if (!rawText) return false;
-  const parsed = JSON.parse(rawText.replace(/```json|```/g, '').trim());
-  return applyExtractedJsonToSchedule(parsed);
+  const parsed = await callGeminiWithFallback([
+    { text: prompt },
+    { inline_data: { mime_type: mimeType, data: base64Data } }
+  ], apiKey);
+  return applyExtractedJsonToSchedule(parsed, requiredTokens);
 }
 
-function parseLocalScheduleText(text) {
+function parseLocalScheduleText(text, requiredTokens) {
   if (!text) return 0;
-  if (/BRASSEUR/i.test(text)) {
+  const tokens = requiredTokens || getDriverFilterTokens();
+  if (lineMatchesDriverStrict(text, ['REMY', 'BRASSEUR'])) {
     document.getElementById('e500FullName').value = 'Rémy Marcel L BRASSEUR';
     checkDriverMatch();
   }
@@ -2172,7 +2347,7 @@ function parseLocalScheduleText(text) {
   let updatedCount = 0;
   const lines = text.split(/\n+/);
   lines.forEach(line => {
-    const m = line.match(/\b([1-9]|[12]\d|3[01])\b\s+(BVTS|RX|OO|ELH|REC|WKD|ZZ|ZB|BLH|BELH|BTH|BTULH|NMBS)\b(?:\s+(\d{1,2}[:hH]\d{2})\s*[-àa]?\s*(\d{1,2}[:hH]\d{2}))?/i);
+    const m = line.match(/\b([1-9]|[12]\d|3[01])\b\s+(BVTS|RX|OO|ELH|REC|WKD|ZZ|ZB|BLH|BELH|BTH|BTULH|NMBS)\b(?:\s+(\d{1,2}[:hH.]\d{2})\s*[-àa]?\s*(\d{1,2}[:hH.]\d{2}))?/i);
     if (m) {
       const d = parseInt(m[1], 10);
       const code = m[2].toUpperCase();
@@ -2180,8 +2355,8 @@ function parseLocalScheduleText(text) {
       if (row) {
         row.code = code;
         if (m[3] && m[4]) {
-          row.start = m[3].replace(/[hH]/, ':');
-          row.end = m[4].replace(/[hH]/, ':');
+          row.start = m[3].replace(/[hH.]/, ':');
+          row.end = m[4].replace(/[hH.]/, ':');
         }
         updatedCount++;
       }
