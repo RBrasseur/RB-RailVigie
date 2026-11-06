@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rb-railvigie-opt-final';
+const CACHE_NAME = 'rb-railvigie-grid-decoucher';
 const ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (event) => {

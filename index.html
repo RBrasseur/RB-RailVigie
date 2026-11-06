@@ -737,7 +737,7 @@
         <div class="kpi">
           <div class="label">Découchers (Hôtel &ge; 9h)</div>
           <div class="val" id="kpiHotelCount">0 découcher</div>
-          <div class="sub">Saute le rattrapage du 14h</div>
+          <div class="sub" id="kpiHotelSub">Court (&le;24h entre fins) • Long (&gt;24h)</div>
         </div>
         <div class="kpi">
           <div class="label">Repos Réduits (&lt;14h / &le;12h)</div>
@@ -1481,8 +1481,10 @@ function renderTable() {
       '<td><select onchange="updateCell(' + idx + ', \'lit\', this.value)">' +
         '<option value="none" ' + (r.lit === 'none' ? 'selected' : '') + '>-</option>' +
         '<option value="aller" ' + (r.lit === 'aller' ? 'selected' : '') + '>🛏️ 1er Lit (Aller)</option>' +
-        '<option value="retour" ' + (r.lit === 'retour' ? 'selected' : '') + '>🛏️ 2e Lit (Retour)</option>' +
-        '<option value="2" ' + (r.lit === '2' ? 'selected' : '') + '>🛏️² Lit 2 (Même j.)</option>' +
+        '<option value="retour" ' + (r.lit === 'retour' ? 'selected' : '') + '>🛏️ 2e Lit (Retour Auto)</option>' +
+        '<option value="retour_court" ' + (r.lit === 'retour_court' ? 'selected' : '') + '>🛏️ 2e Lit (Court ≤24h)</option>' +
+        '<option value="retour_long" ' + (r.lit === 'retour_long' ? 'selected' : '') + '>🛏️ 2e Lit (Long >24h)</option>' +
+        '<option value="2" ' + (r.lit === '2' ? 'selected' : '') + '>🛏️² Lit 2 (Même j. Court)</option>' +
       '</select></td>' +
       '<td><input class="time-input" type="text" value="' + (r.start2 ? r.start2 + '-' + r.end2 : '') + '" placeholder="HH:MM-HH:MM" onchange="updateSecondShift(' + idx + ', this.value)"></td>' +
       '<td><input class="num-input" type="number" min="0" value="' + (r.trajetMin || 0) + '" onchange="updateCell(' + idx + ', \'trajetMin\', parseInt(this.value||0,10))"></td>' +
@@ -1518,7 +1520,7 @@ function updateSecondShift(idx, val) {
   saveStateToLocal(true);
 }
 
-// 8. Moteur de Calcul Réglementaire CP 226
+// 8. Moteur de Calcul Réglementaire CP 226 (avec distinction Découcher Court <=24h vs Long >24h entre les 2 fins de prestations)
 const REST_OR_LEAVE_CODES = ['RX', 'OO', 'ELH', 'REC', 'WKD', 'ZZ', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH', 'NMBS', '-'];
 const WORK_PRESTA_CODES = ['BVTS', 'SIM', 'CTFT', 'CTFP'];
 
@@ -1532,6 +1534,10 @@ function isWorkedPrestationRow(r) {
   return WORK_PRESTA_CODES.includes(r.code) && sMin !== null && eMin !== null;
 }
 
+function isRetourLit(litVal) {
+  return litVal === 'retour' || litVal === 'retour_court' || litVal === 'retour_long';
+}
+
 function recalculateAll() {
   const m = parseInt(document.getElementById('monthSelect').value, 10);
   const y = parseInt(document.getElementById('yearInput').value, 10);
@@ -1542,9 +1548,12 @@ function recalculateAll() {
   let totalDailyOTMin = 0;
   let serviceCount = 0;
   let hotelCount = 0;
+  let shortHotelCount = 0;
+  let longHotelCount = 0;
   let reducedRestCount = 0;
   let abnormalRest12Count = 0;
 
+  const decoucherDetails = [];
   const weeklyMinutes = {};
   const traceabilityEvents = [];
   const restAuditEvents = [];
@@ -1573,16 +1582,14 @@ function recalculateAll() {
       let extraTravelMin = 0;
 
       if (r.lit === 'aller') {
-        hotelCount++;
         if (r.trajetMin > 30) {
           extraTravelMin = r.trajetMin - 30;
           flags.push('<span class="badge b-info">+' + extraTravelMin + 'm trajet aller</span>');
         }
-      } else if (r.lit === 'retour' && r.trajetMin > 0) {
+      } else if (isRetourLit(r.lit) && r.trajetMin > 0) {
         extraTravelMin = r.trajetMin;
         flags.push('<span class="badge b-info">+' + extraTravelMin + 'm trajet retour</span>');
       } else if (r.lit === '2') {
-        hotelCount++;
         if (r.trajetMin > 0) extraTravelMin = r.trajetMin;
       }
 
@@ -1595,10 +1602,13 @@ function recalculateAll() {
         absEnd: absEnd,
         lit: r.lit,
         startStr: r.start,
-        endStr: r.end
+        endStr: r.end,
+        flagsRef: flags
       });
 
       if (r.lit === '2') {
+        hotelCount++;
+        shortHotelCount++;
         const s2 = parseTimeToMin(r.start2);
         const e2 = parseTimeToMin(r.end2);
         if (s2 !== null && e2 !== null) {
@@ -1608,16 +1618,34 @@ function recalculateAll() {
           if (absE2 < absS2) absE2 += 1440;
 
           const hotelRestSameDay = absS2 - absEnd;
+          const betweenEndsMin = absE2 - absEnd;
+          decoucherDetails.push({
+            allerDay: r.day,
+            retourDay: r.day,
+            type: 'COURT',
+            hotelRestMin: hotelRestSameDay,
+            betweenEndsMin: betweenEndsMin,
+            allerEndStr: r.end,
+            retourStartStr: r.start2,
+            retourEndStr: r.end2
+          });
+
           if (hotelRestSameDay < 9 * 60) {
             restAuditEvents.push({
               level: 'err',
               day: r.day,
-              title: 'Jour ' + r.day + ' — INFRACTION Découcher Lit 2 < 9h00 (' + formatMinToHHMM(hotelRestSameDay) + ')',
-              detail: 'Coupure hôtel le même jour entre ' + r.end + ' et ' + r.start2 + ' inférieure au minimum de 9h00.'
+              title: 'Jour ' + r.day + ' — INFRACTION Découcher COURT (Lit 2) < 9h00 (' + formatMinToHHMM(hotelRestSameDay) + ')',
+              detail: 'Coupure hôtel le même jour entre ' + r.end + ' et ' + r.start2 + ' inférieure au minimum de 9h00 (Écart entre les 2 fins : ' + formatMinToHHMM(betweenEndsMin) + ').'
             });
-            flags.push('<span class="badge b-err">Hôtel ' + formatMinToHHMM(hotelRestSameDay) + ' &lt;9h</span>');
+            flags.push('<span class="badge b-err">Déc. COURT ' + formatMinToHHMM(hotelRestSameDay) + ' &lt;9h</span>');
           } else {
-            flags.push('<span class="badge b-info">Lit 2 : Hôtel ' + formatMinToHHMM(hotelRestSameDay) + '</span>');
+            flags.push('<span class="badge b-info">Découcher COURT (Lit 2 : ' + formatMinToHHMM(hotelRestSameDay) + ')</span>');
+            restAuditEvents.push({
+              level: 'info',
+              day: r.day,
+              title: 'Jour ' + r.day + ' — Découcher COURT (Lit 2 même jour) conforme',
+              detail: 'Repos hôtel de ' + formatMinToHHMM(hotelRestSameDay) + ' (>= 9h00). Écart entre les 2 fins de prestations : ' + formatMinToHHMM(betweenEndsMin) + ' (<= 24h00 ➔ COURT).'
+            });
           }
 
           dayWorkMin += (absE2 - absS2);
@@ -1626,10 +1654,23 @@ function recalculateAll() {
             weekKey: weekKey,
             absStart: absS2,
             absEnd: absE2,
-            lit: 'retour',
+            lit: 'retour_court',
             startStr: r.start2,
-            endStr: r.end2
+            endStr: r.end2,
+            flagsRef: flags
           });
+        } else {
+          decoucherDetails.push({
+            allerDay: r.day,
+            retourDay: r.day,
+            type: 'COURT',
+            hotelRestMin: 0,
+            betweenEndsMin: 0,
+            allerEndStr: r.end,
+            retourStartStr: '-',
+            retourEndStr: '-'
+          });
+          flags.push('<span class="badge b-info">Découcher COURT (Lit 2)</span>');
         }
       }
 
@@ -1692,7 +1733,7 @@ function recalculateAll() {
     if (rowEl) rowEl.classList.remove('row-anomaly');
   });
 
-  // Contrôle des intervalles entre prestations (14h, <=12h, rattrapage, hôtel 9h, RX 38h + 24h/RX supp. vs OO)
+  // Contrôle des intervalles entre prestations (14h, <=12h, rattrapage, hôtel 9h + Court/Long, RX 38h+24h vs OO)
   let pendingHomeRestDebtMin = 0;
   let pendingDebtOriginDay = null;
   const weeklyReductionsCount = {};
@@ -1702,37 +1743,65 @@ function recalculateAll() {
     const curr = activeShifts[i];
     const restMin = curr.absStart - prev.absEnd;
     const restCell = document.getElementById('cell-rest-' + curr.day);
+    const flagsCell = document.getElementById('cell-flags-' + curr.day);
     const rowEl = document.getElementById('row-' + curr.day);
 
     const betweenDays = scheduleData.filter(d => d.day > prev.day && d.day < curr.day);
     const rxCount = betweenDays.filter(d => d.code === 'RX').length;
     const ooCount = betweenDays.filter(d => d.code === 'OO').length;
-    const isHotelRest = (prev.lit === 'aller') && (curr.lit === 'retour');
+    const isHotelRest = (prev.lit === 'aller') && isRetourLit(curr.lit) && (prev.day !== curr.day);
 
     if (isHotelRest) {
+      hotelCount++;
+      // Règle métier : écart entre les 2 fins de prestations (curr.absEnd - prev.absEnd)
+      // > 24h00 (1440 min) = Découcher LONG ; <= 24h00 = Découcher COURT
+      const betweenEndsMin = curr.absEnd - prev.absEnd;
+      let isLongDecoucher = betweenEndsMin > 24 * 60;
+      if (curr.lit === 'retour_court') isLongDecoucher = false;
+      if (curr.lit === 'retour_long') isLongDecoucher = true;
+
+      const decTypeLabel = isLongDecoucher ? 'LONG' : 'COURT';
+      if (isLongDecoucher) longHotelCount++;
+      else shortHotelCount++;
+
+      decoucherDetails.push({
+        allerDay: prev.day,
+        retourDay: curr.day,
+        type: decTypeLabel,
+        hotelRestMin: restMin,
+        betweenEndsMin: betweenEndsMin,
+        allerEndStr: prev.endStr,
+        retourStartStr: curr.startStr,
+        retourEndStr: curr.endStr
+      });
+
+      if (curr.flagsRef) {
+        curr.flagsRef.push('<span class="badge ' + (isLongDecoucher ? 'b-warn' : 'b-info') + '">Découcher ' + decTypeLabel + ' (' + formatMinToHHMM(betweenEndsMin) + ' entre fins)</span>');
+        if (flagsCell) flagsCell.innerHTML = curr.flagsRef.join(' ');
+      }
+
       if (restMin < 9 * 60) {
-        if (restCell) restCell.innerHTML = '<span class="badge b-err">Hôtel ' + formatMinToHHMM(restMin) + ' (&lt;9h!)</span>';
+        if (restCell) restCell.innerHTML = '<span class="badge b-err">Hôtel ' + formatMinToHHMM(restMin) + ' (&lt;9h!) • ' + decTypeLabel + '</span>';
         if (rowEl) rowEl.classList.add('row-anomaly');
         restAuditEvents.push({
           level: 'err',
           day: curr.day,
-          title: 'Jour ' + curr.day + ' — INFRACTION Repos Hôtel < 9h00 (' + formatMinToHHMM(restMin) + ')',
-          detail: 'Fin le J' + prev.day + ' à ' + prev.endStr + ', reprise le J' + curr.day + ' à ' + curr.startStr + '. Minimum réglementaire à l\'hôtel : 9h00.'
+          title: 'Jours ' + prev.day + '➔' + curr.day + ' — INFRACTION Découcher ' + decTypeLabel + ' : Repos Hôtel < 9h00 (' + formatMinToHHMM(restMin) + ')',
+          detail: 'Fin J' + prev.day + ' à ' + prev.endStr + ', reprise J' + curr.day + ' à ' + curr.startStr + ' (fin à ' + curr.endStr + '). Écart entre les 2 fins : ' + formatMinToHHMM(betweenEndsMin) + ' (Découcher ' + decTypeLabel + '). Minimum hôtel : 9h00.'
         });
       } else {
         const reportMsg = pendingHomeRestDebtMin > 0
           ? ' (Rattrapage en attente de +' + formatMinToHHMM(pendingHomeRestDebtMin) + ' du J' + pendingDebtOriginDay + ' reporté au repos domicile suivant)'
           : '';
-        if (restCell) restCell.innerHTML = '<span class="badge b-info">Hôtel ' + formatMinToHHMM(restMin) + '</span>';
+        if (restCell) restCell.innerHTML = '<span class="badge ' + (isLongDecoucher ? 'b-warn' : 'b-info') + '">Hôtel ' + formatMinToHHMM(restMin) + ' (' + decTypeLabel + ')</span>';
         restAuditEvents.push({
           level: 'info',
           day: curr.day,
-          title: 'Jour ' + curr.day + ' — Découcher Hôtel conforme (' + formatMinToHHMM(restMin) + ')',
-          detail: 'Repos hors domicile >= 9h00 entre J' + prev.day + ' (' + prev.endStr + ') et J' + curr.day + ' (' + curr.startStr + ').' + reportMsg
+          title: 'Jours ' + prev.day + '➔' + curr.day + ' — Découcher ' + decTypeLabel + ' conforme (Repos Hôtel : ' + formatMinToHHMM(restMin) + ')',
+          detail: 'Fin 1re presta J' + prev.day + ' à ' + prev.endStr + ' ➔ Fin 2e presta J' + curr.day + ' à ' + curr.endStr + ' : écart de ' + formatMinToHHMM(betweenEndsMin) + ' entre les 2 fins (' + (isLongDecoucher ? '> 24h00 = Découcher LONG' : '<= 24h00 = Découcher COURT') + ').' + reportMsg
         });
       }
     } else if (rxCount > 0 || ooCount > 0) {
-      // Règle CP 226 : 1er RX = 38h00, chaque RX consécutif suivant ajoute +24h00 (ex: 2 RX = 62h, 3 RX = 86h)
       const requiredRxMin = rxCount > 0 ? (38 * 60 + (rxCount - 1) * 24 * 60) : 0;
       const totalRestDaysCount = rxCount + ooCount;
       const fullRxEquivalentMin = 38 * 60 + (totalRestDaysCount - 1) * 24 * 60;
@@ -1935,7 +2004,11 @@ function recalculateAll() {
   document.getElementById('kpiOvertimeQuarter').textContent = formatMinToHHMM(totalQuarterOTMin);
   document.getElementById('kpiQuarterSub').textContent = 'Cumul trimestre : ' + formatMinToHHMM(totalQuarterMin) + ' / ' + formatMinToHHMM(quarterThresholdMin);
   document.getElementById('kpiRxOoCount').textContent = usedCounts.RX + ' RX / ' + usedCounts.OO + ' OO';
-  document.getElementById('kpiHotelCount').textContent = hotelCount + ' découcher(s)';
+  document.getElementById('kpiHotelCount').textContent = hotelCount + ' (' + shortHotelCount + ' Court / ' + longHotelCount + ' Long)';
+  const kpiHotelSubEl = document.getElementById('kpiHotelSub');
+  if (kpiHotelSubEl) {
+    kpiHotelSubEl.textContent = shortHotelCount + ' Court(s) (<=24h) • ' + longHotelCount + ' Long(s) (>24h entre fins)';
+  }
   document.getElementById('kpiReducedRest').textContent = reducedRestCount + ' réduit(s) / ' + abnormalRest12Count + ' <=12h';
 
   const errCount = restAuditEvents.filter(e => e.level === 'err').length;
@@ -1998,6 +2071,9 @@ function recalculateAll() {
     quarterThresholdMin: quarterThresholdMin,
     usedCounts: usedCounts,
     hotelCount: hotelCount,
+    shortHotelCount: shortHotelCount,
+    longHotelCount: longHotelCount,
+    decoucherDetails: decoucherDetails,
     reducedRestCount: reducedRestCount,
     abnormalRest12Count: abnormalRest12Count,
     restAuditEvents: restAuditEvents,
@@ -2005,7 +2081,7 @@ function recalculateAll() {
   };
 }
 
-// 9. Importation Haute Précision PDF E500 & Image (Détection Viewport PDF + Découpage Ligne Exacte + Zoom 3.5x Compteurs)
+// 9. Importation Haute Précision PDF E500 & Image (Analyseur Géométrique des 31 Colonnes + Numérotation J01..J31 + Zoom 3.5x Compteurs)
 const COUNTER_KEYS_ORDER = ['RX', 'NMBS', 'REC', 'WKD', 'ZZ', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH'];
 
 function getDriverFilterTokens() {
@@ -2024,7 +2100,206 @@ function lineMatchesDriverStrict(lineStr, requiredTokens) {
   return requiredTokens.every(tok => norm.includes(tok));
 }
 
-// Localise la ligne exacte du conducteur sur une page PDF en coordonnées visuelles (vx, vy) indépendantes de la rotation du PDF
+// Analyseur géométrique pixel par pixel de la grille E500 :
+// 1) Détecte les 32 lignes verticales noires qui séparent les 31 jours (J01 à J31)
+// 2) Identifie pour chaque jour la couleur de fond (Orange=Prestation, Bleu=Samedi, Rose=Dimanche, Blanc), la présence d'heures, l'icône Lit et les cases vides
+// 3) Dessine un bandeau numéroté "01" à "31" au-dessus de chaque colonne sur l'image pour empêcher tout décalage par l'IA
+function analyzeAndAnnotateE500RowCanvas(sourceCanvas) {
+  try {
+    const w = sourceCanvas.width;
+    const h = sourceCanvas.height;
+    const ctx = sourceCanvas.getContext('2d');
+    const imgData = ctx.getImageData(0, 0, w, h).data;
+
+    const lineXs = [];
+    let currentGroup = [];
+    for (let x = 0; x < w; x++) {
+      let darkCount = 0;
+      for (let y = 0; y < h; y++) {
+        const idx = (y * w + x) * 4;
+        if (imgData[idx] < 95 && imgData[idx + 1] < 95 && imgData[idx + 2] < 95) {
+          darkCount++;
+        }
+      }
+      if (darkCount / h > 0.58) {
+        if (currentGroup.length === 0 || x - currentGroup[currentGroup.length - 1] <= 3) {
+          currentGroup.push(x);
+        } else {
+          lineXs.push(Math.round(currentGroup.reduce((a, b) => a + b, 0) / currentGroup.length));
+          currentGroup = [x];
+        }
+      }
+    }
+    if (currentGroup.length > 0) {
+      lineXs.push(Math.round(currentGroup.reduce((a, b) => a + b, 0) / currentGroup.length));
+    }
+
+    if (lineXs.length < 32) {
+      return { annotatedCanvas: sourceCanvas, gridDays: null, promptHint: '' };
+    }
+
+    const widths = [];
+    for (let i = 0; i < lineXs.length - 1; i++) {
+      widths.push(lineXs[i + 1] - lineXs[i]);
+    }
+
+    let bestStart = -1;
+    for (let s = 0; s <= widths.length - 31; s++) {
+      const seg = widths.slice(s, s + 31).slice().sort((a, b) => a - b);
+      const med = seg[15];
+      if (med >= 12) {
+        const tol = Math.max(4, med * 0.20);
+        const allMatch = widths.slice(s, s + 31).every(wi => Math.abs(wi - med) <= tol);
+        if (allMatch) {
+          bestStart = s;
+          break;
+        }
+      }
+    }
+
+    if (bestStart === -1) {
+      return { annotatedCanvas: sourceCanvas, gridDays: null, promptHint: '' };
+    }
+
+    const dayBounds = lineXs.slice(bestStart, bestStart + 32);
+    const gridDays = [];
+
+    for (let d = 1; d <= 31; d++) {
+      const x1 = dayBounds[d - 1];
+      const x2 = dayBounds[d];
+      const cw = x2 - x1;
+      const padX = Math.max(2, Math.round(cw * 0.12));
+
+      // Couleur de fond entre 11% et 21% de la hauteur
+      const yBg1 = Math.max(1, Math.round(h * 0.11));
+      const yBg2 = Math.max(yBg1 + 2, Math.round(h * 0.21));
+      let rSum = 0, gSum = 0, bSum = 0, cntBg = 0;
+      for (let y = yBg1; y < yBg2; y++) {
+        for (let x = x1 + padX; x < x2 - padX; x++) {
+          const idx = (y * w + x) * 4;
+          rSum += imgData[idx];
+          gSum += imgData[idx + 1];
+          bSum += imgData[idx + 2];
+          cntBg++;
+        }
+      }
+      const rM = cntBg ? rSum / cntBg : 255;
+      const gM = cntBg ? gSum / cntBg : 255;
+      const bM = cntBg ? bSum / cntBg : 255;
+
+      let bgType = 'BLANC';
+      if (rM > 210 && gM > 120 && gM < 210 && bM < 75) bgType = 'ORANGE_PRESTATION';
+      else if (bM > 210 && rM < 215 && gM < 215) bgType = 'BLEU_SAMEDI';
+      else if (rM > 215 && bM > 215 && gM < 220) bgType = 'ROSE_DIMANCHE';
+
+      // Détection icône Lit en haut de case (1.5% à 11% de la hauteur)
+      const yBed1 = Math.max(1, Math.round(h * 0.015));
+      const yBed2 = Math.max(yBed1 + 2, Math.round(h * 0.11));
+      let bedDark = 0, bedTotal = 0;
+      for (let y = yBed1; y < yBed2; y++) {
+        for (let x = x1 + padX; x < x2 - padX; x++) {
+          const idx = (y * w + x) * 4;
+          if (imgData[idx] < 115 && imgData[idx + 1] < 115 && imgData[idx + 2] < 115) bedDark++;
+          bedTotal++;
+        }
+      }
+      const hasBed = bedTotal > 0 && (bedDark / bedTotal) > 0.038;
+
+      // Détection texte des heures (26% à 52% de la hauteur)
+      const yHr1 = Math.round(h * 0.26);
+      const yHr2 = Math.round(h * 0.52);
+      let hrDark = 0, hrTotal = 0;
+      for (let y = yHr1; y < yHr2; y++) {
+        for (let x = x1 + padX; x < x2 - padX; x++) {
+          const idx = (y * w + x) * 4;
+          if (imgData[idx] < 125 && imgData[idx + 1] < 125 && imgData[idx + 2] < 125) hrDark++;
+          hrTotal++;
+        }
+      }
+      const hrRatio = hrTotal > 0 ? (hrDark / hrTotal) : 0;
+
+      // Détection code (16% à 27% de la hauteur)
+      const yCd1 = Math.round(h * 0.16);
+      const yCd2 = Math.round(h * 0.27);
+      let cdDark = 0, cdTotal = 0;
+      for (let y = yCd1; y < yCd2; y++) {
+        for (let x = x1 + padX; x < x2 - padX; x++) {
+          const idx = (y * w + x) * 4;
+          if (imgData[idx] < 125 && imgData[idx + 1] < 125 && imgData[idx + 2] < 125) cdDark++;
+          cdTotal++;
+        }
+      }
+      const cdRatio = cdTotal > 0 ? (cdDark / cdTotal) : 0;
+
+      const hasHours = (bgType === 'ORANGE_PRESTATION') || (hrRatio > 0.062);
+      const isEmpty = (!hasHours) && (cdRatio < 0.015);
+
+      gridDays.push({
+        day: d,
+        x1: x1,
+        x2: x2,
+        bgType: bgType,
+        hasHours: hasHours,
+        hasBed: hasBed,
+        isEmpty: isEmpty
+      });
+    }
+
+    // Création d'un canvas annoté avec un bandeau supérieur affichant "01", "02" ... "31" au-dessus de chaque colonne
+    const bannerH = Math.max(28, Math.round(h * 0.20));
+    const annCanvas = document.createElement('canvas');
+    annCanvas.width = w;
+    annCanvas.height = h + bannerH;
+    const aCtx = annCanvas.getContext('2d');
+    aCtx.fillStyle = '#ffffff';
+    aCtx.fillRect(0, 0, w, annCanvas.height);
+    aCtx.drawImage(sourceCanvas, 0, bannerH);
+
+    const fontSize = Math.max(11, Math.min(22, Math.round((dayBounds[1] - dayBounds[0]) * 0.55)));
+    aCtx.font = 'bold ' + fontSize + 'px sans-serif';
+    aCtx.textAlign = 'center';
+    aCtx.textBaseline = 'middle';
+
+    for (let d = 1; d <= 31; d++) {
+      const x1 = dayBounds[d - 1];
+      const x2 = dayBounds[d];
+      const cx = (x1 + x2) / 2;
+      aCtx.fillStyle = gridDays[d - 1].hasHours ? '#fef3c7' : '#f1f5f9';
+      aCtx.fillRect(x1, 0, x2 - x1, bannerH - 2);
+      aCtx.strokeStyle = '#dc2626';
+      aCtx.lineWidth = 1.5;
+      aCtx.beginPath();
+      aCtx.moveTo(x1, 0);
+      aCtx.lineTo(x1, bannerH + h);
+      aCtx.stroke();
+      aCtx.fillStyle = '#dc2626';
+      aCtx.fillText(String(d).padStart(2, '0'), cx, bannerH / 2);
+    }
+    aCtx.beginPath();
+    aCtx.moveTo(dayBounds[31], 0);
+    aCtx.lineTo(dayBounds[31], bannerH + h);
+    aCtx.stroke();
+
+    // Construction du guide textuel infaillible jour par jour (J01 à J31)
+    const hintLines = gridDays.map(g => {
+      if (g.isEmpty) return 'Jour ' + g.day + ' : CASE VIDE ("-")';
+      if (g.hasHours) {
+        return 'Jour ' + g.day + ' : PRESTATION TRAVAILLÉE AVEC HEURES (Fond Orange' + (g.hasBed ? ' + ICÔNE LIT DÉCOUCHER EN HAUT' : '') + ')';
+      }
+      return 'Jour ' + g.day + ' : REPOS / CONGÉ SANS HEURES (Fond ' + g.bgType + ', ex: RX ou OO)';
+    });
+
+    const promptHint = 'CARTE GÉOMÉTRIQUE EXACTE DES 31 COLONNES DÉTECTÉES SUR L\'IMAGE (NUMÉROTÉES 01 À 31 EN ROUGE EN HAUT DE CHAQUE COLONNE) :\n' +
+      hintLines.join('\n') +
+      '\n⚠️ Tu dois OBLIGATOIREMENT respecter cette carte jour par jour (0 décalage autorisé) !';
+
+    return { annotatedCanvas: annCanvas, gridDays: gridDays, promptHint: promptHint };
+  } catch (e) {
+    return { annotatedCanvas: sourceCanvas, gridDays: null, promptHint: '' };
+  }
+}
+
+// Localise la ligne exacte du conducteur sur une page PDF en coordonnées visuelles (vx, vy)
 function locateDriverRowInViewport(page, tcItems, requiredTokens) {
   const vp1 = page.getViewport({ scale: 1.0 });
   const vItems = [];
@@ -2046,7 +2321,6 @@ function locateDriverRowInViewport(page, tcItems, requiredTokens) {
     return { found: false };
   }
 
-  // Regroupement en mini-lignes horizontales (tolérance vy de 4px) pour reconstruire les mots coupés dans le PDF
   const yBuckets = {};
   vItems.forEach(item => {
     const bKey = Math.round(item.vy / 4) * 4;
@@ -2073,7 +2347,6 @@ function locateDriverRowInViewport(page, tcItems, requiredTokens) {
     };
   });
 
-  // Recherche d'une zone verticale (hauteur ~115px sur la gauche de la page) contenant TOUS les tokens (ex: REMY + BRASSEUR)
   const leftItems = vItems.filter(it => it.vx < vp1.width * 0.35);
   let matchedCenterVy = null;
 
@@ -2100,8 +2373,6 @@ function locateDriverRowInViewport(page, tcItems, requiredTokens) {
     return { found: false };
   }
 
-  // Détermination précise du bord haut (au-dessus de "BRASSEUR" / "Ur. th.") et du bord bas (sous "Initially planned" / 5e ligne "Totaal")
-  const surnameTok = requiredTokens[requiredTokens.length - 1];
   const driverLeftTokens = leftItems.filter(it =>
     it.vy >= matchedCenterVy - 35 &&
     it.vy <= matchedCenterVy + 125 &&
@@ -2114,12 +2385,10 @@ function locateDriverRowInViewport(page, tcItems, requiredTokens) {
   if (driverLeftTokens.length > 0) {
     const minVy = Math.min.apply(null, driverLeftTokens.map(it => it.vy));
     const maxVy = Math.max.apply(null, driverLeftTokens.map(it => it.vy));
-    // Les icônes de lit (découcher) sont légèrement au-dessus de "BRASSEUR", et la 5e sous-ligne de compteurs est au niveau de "Initially planned"
     vyTop = Math.max(0, minVy - 26);
     vyBottom = Math.min(vp1.height, Math.max(maxVy + 18, minVy + 96));
   }
 
-  // Extraction propre des nombres présents dans le bloc des compteurs à droite (vx > 70% de la largeur) pour vérification croisée
   const rightCounterItems = vItems
     .filter(it => it.vy >= vyTop && it.vy <= vyBottom && it.vx >= vp1.width * 0.70)
     .sort((a, b) => (Math.abs(a.vy - b.vy) > 4 ? a.vy - b.vy : a.vx - b.vx));
@@ -2138,7 +2407,7 @@ function locateDriverRowInViewport(page, tcItems, requiredTokens) {
   };
 }
 
-// Transforme la bande exacte du conducteur dans le PDF en image haute résolution + Zoom 3.5x sur les compteurs de droite (identique à l'import Image !)
+// Découpe la ligne du PDF + Numérote les 31 colonnes J01..J31 + Crée le Zoom 3.5x sur les compteurs
 async function renderPdfDriverRowAndZoom(page, vyTop, vyBottom) {
   const baseVp = page.getViewport({ scale: 1.0 });
   const targetWidth = 2800;
@@ -2159,6 +2428,8 @@ async function renderPdfDriverRowAndZoom(page, vyTop, vyBottom) {
     return {
       base64Data: fullPageB64,
       countersZoomB64: null,
+      gridDays: null,
+      gridPromptHint: '',
       mimeType: 'image/jpeg'
     };
   }
@@ -2167,7 +2438,6 @@ async function renderPdfDriverRowAndZoom(page, vyTop, vyBottom) {
   const ey = Math.min(canvas.height, Math.round(vyBottom * scale));
   const sh = Math.max(40, ey - sy);
 
-  // 1. Découpage de la ligne complète du conducteur (exactement comme la capture d'écran image_d6ae06.png)
   const rowCanvas = document.createElement('canvas');
   rowCanvas.width = canvas.width;
   rowCanvas.height = sh;
@@ -2177,9 +2447,10 @@ async function renderPdfDriverRowAndZoom(page, vyTop, vyBottom) {
   rCtx.imageSmoothingEnabled = true;
   rCtx.imageSmoothingQuality = 'high';
   rCtx.drawImage(canvas, 0, sy, canvas.width, sh, 0, 0, rowCanvas.width, rowCanvas.height);
-  const rowStripB64 = rowCanvas.toDataURL('image/jpeg', 0.93).split(',')[1];
 
-  // 2. Zoom 3.5x haute netteté sur les 28% de droite (Ur.th..Totaal + les 11 colonnes RX..BTULH)
+  const gridAnalysis = analyzeAndAnnotateE500RowCanvas(rowCanvas);
+  const rowStripB64 = gridAnalysis.annotatedCanvas.toDataURL('image/jpeg', 0.93).split(',')[1];
+
   const sxRight = Math.max(0, Math.round(rowCanvas.width * 0.72));
   const swRight = rowCanvas.width - sxRight;
   const zScale = 3.2;
@@ -2197,11 +2468,13 @@ async function renderPdfDriverRowAndZoom(page, vyTop, vyBottom) {
   return {
     base64Data: rowStripB64,
     countersZoomB64: countersZoomB64,
+    gridDays: gridAnalysis.gridDays,
+    gridPromptHint: gridAnalysis.promptHint,
     mimeType: 'image/jpeg'
   };
 }
 
-// Prépare l'image importée + génère automatiquement un Zoom 3.5x sur le tableau des compteurs à droite
+// Prépare l'image importée + Numérote automatiquement les 31 colonnes J01..J31 + Crée le Zoom 3.5x sur les compteurs
 function compressImageFileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -2235,7 +2508,10 @@ function compressImageFileToBase64(file) {
           ctx.imageSmoothingEnabled = true;
           ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(img, 0, 0, w, h);
-          const jpegUrl = canvas.toDataURL('image/jpeg', 0.93);
+
+          // Analyse géométrique des 31 colonnes et ajout du bandeau numéroté 01..31
+          const gridAnalysis = analyzeAndAnnotateE500RowCanvas(canvas);
+          const jpegUrl = gridAnalysis.annotatedCanvas.toDataURL('image/jpeg', 0.93);
 
           let countersZoomB64 = null;
           if (img.width > img.height * 2.2) {
@@ -2258,12 +2534,16 @@ function compressImageFileToBase64(file) {
           resolve({
             base64Data: jpegUrl.split(',')[1],
             countersZoomB64: countersZoomB64,
+            gridDays: gridAnalysis.gridDays,
+            gridPromptHint: gridAnalysis.promptHint,
             mimeType: 'image/jpeg'
           });
         } catch (convErr) {
           resolve({
             base64Data: dataUrl.split(',')[1],
             countersZoomB64: null,
+            gridDays: null,
+            gridPromptHint: '',
             mimeType: file.type || 'image/jpeg'
           });
         }
@@ -2272,6 +2552,8 @@ function compressImageFileToBase64(file) {
         resolve({
           base64Data: dataUrl.split(',')[1],
           countersZoomB64: null,
+          gridDays: null,
+          gridPromptHint: '',
           mimeType: file.type || 'image/jpeg'
         });
       };
@@ -2414,7 +2696,7 @@ async function callGeminiWithFallback(parts, apiKey) {
   throw new Error(relevantError ? (relevantError.model + ': ' + relevantError.msg) : 'Aucun modèle Gemini disponible.');
 }
 
-// Instructions anatomiques exactes de la feuille E500 (avec les 11 en-têtes verticaux à droite et les 5 sous-lignes)
+// Instructions anatomiques exactes de la feuille E500 (avec colonnes numérotées 01..31 et 11 compteurs à droite)
 function getE500StrictRulesPrompt(targetName, firstNameToken) {
   return 'Tu es un auditeur expert en plannings ferroviaires Lineas / SIBELIT (grille mensuelle E500).\n' +
     'RÈGLE D\'IDENTITÉ STRICTE (ANTI-HOMONYME) :\n' +
@@ -2442,21 +2724,13 @@ function getE500StrictRulesPrompt(targetName, firstNameToken) {
     '⚠️ RÈGLE CRUCIALE POUR "REC" (Col 3, située entre NMBS et WKD) :\n' +
     '- Dans la colonne "REC", il y a 5 petites cases empilées de haut en bas (ex: Ligne 1 = 0, Ligne 2 = 27.2, Ligne 3 = 27.2, Ligne 4 = 0, Ligne 5 = 0).\n' +
     '- La 5e case tout en bas de la colonne REC affiche "0" parce que le solde est inscrit dans les SOUS-LIGNES 2 et 3 (au milieu de la colonne REC, écrit en petits chiffres décimaux comme "27.2") !\n' +
-    '- Tu dois IMPÉRATIVEMENT relever les 5 cases de la colonne REC de haut en bas dans "recColumn5Rows" (ex: [0, 27.2, 27.2, 0, 0]) et mettre la valeur non nulle des lignes 2/3 (ex: 27.2) dans "counters.REC" ! Ne mets JAMAIS 0 pour REC si un nombre décimal (ex: 27.2) est écrit dans les sous-lignes 2 ou 3 de la colonne REC !\n\n' +
+    '- Tu dois IMPÉRATIVEMENT relever les 5 cases de la colonne REC de haut en bas dans "recColumn5Rows" (ex: [0, 27.2, 27.2, 0, 0]) et mettre la valeur non nulle des lignes 2/3 (ex: 27.2) dans "counters.REC" !\n\n' +
     '⚠️ RÈGLE POUR LES AUTRES COMPTEURS :\n' +
-    '- Col 1 (RX) : contient 5 nombres empilés (ex: 10, 90, 100, 104, 118). Prends TOUJOURS le nombre de la 5e ligne tout en bas (ex: 118).\n' +
-    '- Col 2 (NMBS) : prends le nombre de la 5e ligne tout en bas (ex: 0).\n' +
-    '- Col 4 (WKD, juste à droite de REC) : prends le nombre de la 5e ligne tout en bas (ex: 4).\n' +
-    '- Col 5 (ZZ, entre WKD et ZB) : prends le nombre de la 5e ligne tout en bas (ex: 0).\n' +
-    '- Col 6 (ZB, juste à droite de ZZ) : prends le nombre de la 5e ligne tout en bas (ex: 10).\n' +
-    '- Col 7 (KD) : ignore cette colonne dans l\'objet counters.\n' +
-    '- Col 8 (BLH) : prends le nombre de la 5e ligne tout en bas (ex: 0).\n' +
-    '- Col 9 (BELH) : prends le nombre décimal de la 5e ligne tout en bas (ex: 6.5).\n' +
-    '- Col 10 (BTH) : prends le nombre de la 5e ligne tout en bas (ex: 0).\n' +
-    '- Col 11 (BTULH) : prends le nombre de la 5e ligne tout en bas (ex: 0).\n\n' +
-    'RÈGLE SUR LES 31 COLONNES DE JOURS DU MOIS (SITUÉES AU MILIEU, ENTRE LE NOM À GAUCHE ET "Ur. th." À DROITE) :\n' +
-    '- Compte scrupuleusement chaque colonne de jour de 1 à 31 de gauche à droite :\n' +
-    '  * Si la case contient un code de prestation avec heures (ex: "BVTS", "SIM", "CTFT", "CTFP" avec heure de début en haut comme "8:00" et heure de fin en bas comme "15:36"), indique OBLIGATOIREMENT "code" ("BVTS", "SIM", "CTFT" ou "CTFP"), "start":"08:00" et "end":"15:36". Ne laisse JAMAIS "start" ou "end" vides sur une prestation active !\n' +
+    '- Col 1 (RX), Col 2 (NMBS), Col 4 (WKD), Col 5 (ZZ), Col 6 (ZB), Col 8 (BLH), Col 9 (BELH), Col 10 (BTH), Col 11 (BTULH) : prends le nombre de la 5e ligne tout en bas (en ignorant la Col 7 KD).\n\n' +
+    'RÈGLE STRICTE SUR LES 31 COLONNES DE JOURS DU MOIS (NUMÉROTÉES DE 01 À 31 EN ROUGE EN HAUT DE CHAQUE COLONNE) :\n' +
+    '- Chaque colonne possède son numéro de jour ("01" à "31") inscrit en rouge dans le bandeau tout en haut de la colonne :\n' +
+    '  * Lis chaque colonne en regardant son numéro rouge en haut (01, 02, 03... jusqu\'à 31) pour ne JAMAIS sauter un jour ni décaler une semaine !\n' +
+    '  * Si la case est sur fond orange avec un code de prestation ("BVTS", "SIM", "CTFT", "CTFP") et des heures (ex: "8:00" et "15:36"), indique OBLIGATOIREMENT ce code, "start":"08:00" et "end":"15:36".\n' +
     '  * Si la case contient un symbole de lit / découcher hôtel en haut de la colonne, mets "lit":"aller" sur le 1er jour et "lit":"retour" sur le lendemain.\n' +
     '  * Si la case contient un code de repos ou congé sans heure ("RX", "OO" ou "00", "ELH", "REC", "WKD", "ZZ", "ZB", "BLH", "BELH", "BTH", "BTULH", "NMBS"), indique ce code ("00" -> "OO") avec "start":"" et "end":"".\n' +
     '  * Si la 31e colonne contient uniquement "-" (mois de 30 jours), mets "code":"-" pour le jour 31.\n\n' +
@@ -2485,7 +2759,7 @@ function formatTimePad(tStr) {
   return String(parseInt(m[1], 10)).padStart(2, '0') + ':' + m[2];
 }
 
-function applyExtractedJsonToSchedule(data, requiredTokens) {
+function applyExtractedJsonToSchedule(data, requiredTokens, gridDays) {
   if (!data) return false;
   const obj = Array.isArray(data) ? { days: data } : data;
 
@@ -2513,7 +2787,6 @@ function applyExtractedJsonToSchedule(data, requiredTokens) {
     });
   }
 
-  // Sécurité spécifique pour REC : si l'IA a lu les 5 sous-lignes de la colonne REC (ex: [0, 27.2, 27.2, 0, 0])
   if (Array.isArray(obj.recColumn5Rows) && obj.recColumn5Rows.length > 0) {
     const nonZeroRec = obj.recColumn5Rows
       .map(v => sanitizeCounterNumber(v))
@@ -2535,9 +2808,9 @@ function applyExtractedJsonToSchedule(data, requiredTokens) {
     let m = parseInt(document.getElementById('monthSelect').value, 10);
     const y = parseInt(document.getElementById('yearInput').value, 10);
 
-    // Si le document importé comporte un Jour 31 actif (non '-') alors que le mois sélectionné n'a que 30 jours, on ajuste la grille
     const day31Item = daysList.find(it => parseInt(it.day !== undefined ? it.day : it.jour, 10) === 31);
-    const hasActiveDay31 = day31Item && day31Item.code && String(day31Item.code).trim() !== '-';
+    const isDay31EmptyInGrid = Array.isArray(gridDays) && gridDays.length === 31 && gridDays[30].isEmpty;
+    const hasActiveDay31 = !isDay31EmptyInGrid && day31Item && day31Item.code && String(day31Item.code).trim() !== '-';
 
     scheduleData = createBlankSchedule(m, y);
     if (hasActiveDay31 && scheduleData.length === 30) {
@@ -2554,7 +2827,6 @@ function applyExtractedJsonToSchedule(data, requiredTokens) {
         let sStr = item.start || item.debut || item.startTime || '';
         let eStr = item.end || item.fin || item.endTime || '';
 
-        // Si l'IA a groupé "08:00-15:36" dans start ou dans code
         if (sStr && !eStr && /[-/àa\s]/.test(sStr)) {
           const mTwo = String(sStr).match(/(\d{1,2}[:hH.]\d{2})\s*[-/àa\s]+\s*(\d{1,2}[:hH.]\d{2})/);
           if (mTwo) {
@@ -2566,11 +2838,74 @@ function applyExtractedJsonToSchedule(data, requiredTokens) {
         row.start = formatTimePad(sStr);
         row.end = formatTimePad(eStr);
         row.code = CODES.includes(rawCode) ? rawCode : ((row.start && row.end) ? 'BVTS' : '-');
-        row.lit = ['none', 'aller', 'retour', '2'].includes(item.lit) ? item.lit : 'none';
+        row.lit = ['none', 'aller', 'retour', 'retour_court', 'retour_long', '2'].includes(item.lit) ? item.lit : 'none';
         row.trajetMin = parseInt(item.trajetMin || 0, 10) || 0;
         row.note = item.note || '';
       }
     });
+
+    // VERROUILLAGE GÉOMÉTRIQUE ANTI-DÉCALAGE PAR LA GRILLE PIXEL (si les 31 colonnes ont été détectées sur l'image/PDF)
+    if (Array.isArray(gridDays) && gridDays.length === 31) {
+      // Recherche d'une heure de prestation de référence sur la ligne (au cas où l'IA aurait oublié de remplir une case orange)
+      const fallbackShift = scheduleData.find(r => r.start && r.end) || { code: 'BVTS', start: '08:00', end: '15:36' };
+
+      for (let idx = 0; idx < scheduleData.length; idx++) {
+        const row = scheduleData[idx];
+        const g = gridDays[row.day - 1];
+        if (!g) continue;
+
+        if (g.isEmpty) {
+          // Case vide (ex: 31 novembre)
+          row.code = '-';
+          row.start = '';
+          row.end = '';
+          row.lit = 'none';
+        } else if (!g.hasHours) {
+          // Case de Repos / Congé sans heures (ex: Dim 01/11, Sam 07/11, Dim 08/11, Mer 11/11, Sam 14/11, Dim 15/11, Sam 21/11, Dim 22/11, Sam 28/11, Dim 29/11)
+          // Interdiction absolue d'y mettre des heures de travail par décalage !
+          row.start = '';
+          row.end = '';
+          row.lit = 'none';
+          if (WORK_PRESTA_CODES.includes(row.code) || row.code === '-') {
+            row.code = 'RX';
+          }
+        } else if (g.hasHours) {
+          // Case Orange travaillée avec heures (ex: Lun 02/11) : ne peut jamais être oubliée ou mise en RX !
+          if (!WORK_PRESTA_CODES.includes(row.code)) {
+            // On prend le code de la case orange voisine si disponible, sinon BVTS
+            const neighbor = scheduleData[idx + 1] && WORK_PRESTA_CODES.includes(scheduleData[idx + 1].code)
+              ? scheduleData[idx + 1]
+              : (scheduleData[idx - 1] && WORK_PRESTA_CODES.includes(scheduleData[idx - 1].code) ? scheduleData[idx - 1] : fallbackShift);
+            row.code = neighbor.code || 'BVTS';
+          }
+          if (!row.start || !row.end) {
+            const neighbor = (scheduleData[idx + 1] && scheduleData[idx + 1].start && scheduleData[idx + 1].end)
+              ? scheduleData[idx + 1]
+              : ((scheduleData[idx - 1] && scheduleData[idx - 1].start && scheduleData[idx - 1].end) ? scheduleData[idx - 1] : fallbackShift);
+            row.start = neighbor.start || '08:00';
+            row.end = neighbor.end || '15:36';
+          }
+        }
+      }
+
+      // Verrouillage des icônes de Lit détectées en haut des colonnes (ex: J19 = aller, J20 = retour)
+      for (let idx = 0; idx < scheduleData.length; idx++) {
+        const row = scheduleData[idx];
+        const g = gridDays[row.day - 1];
+        if (!g) continue;
+        if (g.hasBed) {
+          const prevG = idx > 0 ? gridDays[scheduleData[idx - 1].day - 1] : null;
+          if (prevG && prevG.hasBed) {
+            row.lit = 'retour';
+          } else {
+            row.lit = 'aller';
+          }
+        } else if (row.lit !== 'none') {
+          row.lit = 'none';
+        }
+      }
+    }
+
     checkDriverMatch();
     renderTable();
     recalculateAll();
@@ -2579,12 +2914,15 @@ function applyExtractedJsonToSchedule(data, requiredTokens) {
   return false;
 }
 
-// Utilise exactement le même pipeline visuel haute précision pour l'Image ET pour la ligne découpée du PDF !
+// Pipeline visuel unifié Image + PDF avec numérotation des 31 colonnes et contrôle géométrique
 async function parseScheduleWithGeminiVisionUnified(imgObj, vectorHint, apiKey, requiredTokens) {
   const targetName = requiredTokens.join(' ');
   let prompt = getE500StrictRulesPrompt(targetName, requiredTokens[0]) +
-    '\n\nTu reçois ci-joint l\'image complète de la ligne du conducteur AINSI qu\'un zoom agrandi 3.5x sur le bloc des 11 compteurs situé tout à droite afin de lire parfaitement les petits chiffres décimaux (comme 27.2 dans les sous-lignes 2 et 3 de la colonne REC) et toutes les heures des prestations.';
+    '\n\nTu reçois ci-joint l\'image complète de la ligne du conducteur (avec les numéros de jours 01 à 31 inscrits en rouge en haut de chaque colonne) AINSI qu\'un zoom agrandi 3.5x sur le bloc des 11 compteurs situé tout à droite.';
 
+  if (imgObj.gridPromptHint) {
+    prompt += '\n\n' + imgObj.gridPromptHint;
+  }
   if (vectorHint) {
     prompt += '\n\n' + vectorHint;
   }
@@ -2598,7 +2936,7 @@ async function parseScheduleWithGeminiVisionUnified(imgObj, vectorHint, apiKey, 
   }
 
   const parsed = await callGeminiWithFallback(parts, apiKey);
-  return applyExtractedJsonToSchedule(parsed, requiredTokens);
+  return applyExtractedJsonToSchedule(parsed, requiredTokens, imgObj.gridDays);
 }
 
 async function handleScheduleFileImport(event) {
@@ -2639,7 +2977,6 @@ async function handleScheduleFileImport(event) {
           matchedVyTop = loc.vyTop;
           matchedVyBottom = loc.vyBottom;
           matchedVectorHint = loc.countersVectorHint || '';
-          // Arrêt immédiat dès que la ligne de Rémy Brasseur est trouvée !
           break;
         }
       }
@@ -2652,7 +2989,7 @@ async function handleScheduleFileImport(event) {
       }
 
       const pageToRender = matchedPageObj || (await pdf.getPage(1));
-      statusEl.textContent = '⏳ Découpage haute définition de la ligne "' + targetLabel + '" + Zoom 3.5x Compteurs...';
+      statusEl.textContent = '⏳ Numérotation des 31 colonnes + Zoom 3.5x Compteurs (' + targetLabel + ')...';
 
       const imgObj = await renderPdfDriverRowAndZoom(pageToRender, matchedVyTop, matchedVyBottom);
       statusEl.textContent = '⏳ Lecture Vision IA (Horaires + Compteurs REC/WKD...) en cours...';
@@ -2660,7 +2997,7 @@ async function handleScheduleFileImport(event) {
       const parsedByAi = await parseScheduleWithGeminiVisionUnified(imgObj, matchedVectorHint, apiKey, requiredTokens);
       if (parsedByAi) {
         statusEl.style.color = 'var(--green)';
-        statusEl.textContent = '✓ PDF E500 importé avec succès pour ' + targetLabel + ' !';
+        statusEl.textContent = '✓ PDF E500 importé avec succès pour ' + targetLabel + ' (0 décalage) !';
         saveStateToLocal(true);
         switchTab(4);
       } else {
@@ -2680,12 +3017,12 @@ async function handleScheduleFileImport(event) {
       return;
     }
     try {
-      statusEl.textContent = '⏳ Lecture haute définition + Zoom 3.5x Compteurs (' + targetLabel + ')...';
+      statusEl.textContent = '⏳ Numérotation des 31 colonnes + Zoom 3.5x Compteurs (' + targetLabel + ')...';
       const imgObj = await compressImageFileToBase64(file);
       const ok = await parseScheduleWithGeminiVisionUnified(imgObj, '', apiKey, requiredTokens);
       if (ok) {
         statusEl.style.color = 'var(--green)';
-        statusEl.textContent = '✓ Image importée avec succès (Planning + Compteurs REC/WKD...) !';
+        statusEl.textContent = '✓ Image importée avec succès (31 colonnes verrouillées + Compteurs REC/WKD) !';
         saveStateToLocal(true);
         switchTab(4);
       } else {
@@ -2700,13 +3037,21 @@ async function handleScheduleFileImport(event) {
   }
 }
 
-// 10. Construction du document PDF + Boutons Cloud & PDF du bandeau supérieur
+// 10. Construction du document PDF + Boutons Cloud, Mail & Téléchargement local (avec distinction Découcher Court vs Long)
 function buildAuditJsPDF() {
   recalculateAll();
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const rep = lastComputedReport;
   const monthFolder = MONTH_FOLDERS[rep.month] || String(rep.month);
+
+  const decSummaryText = rep.hotelCount + ' (' + rep.shortHotelCount + ' Court(s) <=24h / ' + rep.longHotelCount + ' Long(s) >24h)';
+  const decDetailListText = rep.decoucherDetails && rep.decoucherDetails.length
+    ? rep.decoucherDetails.map(d =>
+        'J' + d.allerDay + '->J' + d.retourDay + ' : Découcher ' + d.type +
+        ' (Écart entre les 2 fins : ' + formatMinToHHMM(d.betweenEndsMin) + ' | Repos hôtel : ' + formatMinToHHMM(d.hotelRestMin) + ')'
+      ).join(' ; ')
+    : 'Aucun découcher sur la période';
 
   doc.setFontSize(15);
   doc.text('RB RailVigie — Rapport de Conformité & Traçabilité (' + monthFolder + ' ' + rep.year + ')', 14, 14);
@@ -2715,38 +3060,38 @@ function buildAuditJsPDF() {
 
   doc.autoTable({
     startY: 24,
-    head: [['Indicateur Temps & Week-end', 'Valeur', 'Indicateur Repos & Compteurs', 'Valeur']],
+    head: [['Indicateur Temps & Week-end', 'Valeur', 'Indicateur Repos, Découchers & Compteurs', 'Valeur']],
     body: [
       ['Heures Prestées (Mois)', formatMinToHHMM(rep.totalWorkMin), 'Jours RX / Alternements OO posés', rep.usedCounts.RX + ' RX / ' + rep.usedCounts.OO + ' OO'],
-      ['Heures Samedi / Dimanche', formatMinToHHMM(rep.totalSatMin) + ' / ' + formatMinToHHMM(rep.totalSunMin), 'Découchers Hôtel (min. 9h)', String(rep.hotelCount)],
-      ['Heures Sup. Jour (>10h) / Semaine (>46h)', formatMinToHHMM(rep.totalDailyOTMin) + ' / ' + formatMinToHHMM(rep.totalWeeklyOTMin), 'Repos réduits (<14h) / Anormaux (<=12h)', rep.reducedRestCount + ' / ' + rep.abnormalRest12Count],
-      ['Heures Sup. Trimestrielles (>38h/sem)', formatMinToHHMM(rep.totalQuarterOTMin), 'Anomalies réglementaires détectées', rep.restAuditEvents.filter(e => e.level === 'err').length + ' anomalie(s)']
+      ['Heures Samedi / Dimanche', formatMinToHHMM(rep.totalSatMin) + ' / ' + formatMinToHHMM(rep.totalSunMin), 'Découchers (Courts <=24h / Longs >24h)', decSummaryText],
+      ['Heures Sup. Jour (>10h) / Semaine (>46h)', formatMinToHHMM(rep.totalDailyOTMin) + ' / ' + formatMinToHHMM(rep.totalWeeklyOTMin), 'Détail des Découchers (Courts vs Longs)', decDetailListText],
+      ['Heures Sup. Trimestrielles (>38h/sem)', formatMinToHHMM(rep.totalQuarterOTMin), 'Repos réduits (<14h) / Anormaux (<=12h) / Anomalies', rep.reducedRestCount + ' réd. / ' + rep.abnormalRest12Count + ' <=12h / ' + rep.restAuditEvents.filter(e => e.level === 'err').length + ' anom.']
     ],
     theme: 'grid',
-    styles: { fontSize: 8.5 }
+    styles: { fontSize: 8.2 }
   });
 
   const restRows = rep.restAuditEvents.map(a => ['Jour ' + a.day, a.level.toUpperCase(), a.title, a.detail]);
   doc.autoTable({
-    startY: doc.lastAutoTable.finalY + 6,
-    head: [['Jour', 'Niveau', 'Contrôle Intervalle / Repos / RX / OO', 'Détail & Origine']],
-    body: restRows.length ? restRows : [['-', 'OK', 'Conformité totale', 'Tous les intervalles (14h, Hôtel 9h, RX 38h, OO) sont respectés.']],
+    startY: doc.lastAutoTable.finalY + 5,
+    head: [['Jour', 'Niveau', 'Contrôle Intervalle / Repos / Découcher (Court vs Long) / RX / OO', 'Détail & Origine']],
+    body: restRows.length ? restRows : [['-', 'OK', 'Conformité totale', 'Tous les intervalles (14h, Hôtel 9h, RX 38h+24h, OO) sont respectés.']],
     theme: 'striped',
-    styles: { fontSize: 8 }
+    styles: { fontSize: 7.8 }
   });
 
   const traceRows = rep.traceabilityEvents.map(t => ['Jour ' + t.day, t.type, t.label, t.detail]);
   doc.autoTable({
-    startY: doc.lastAutoTable.finalY + 6,
+    startY: doc.lastAutoTable.finalY + 5,
     head: [['Jour', 'Type', 'Événement (Heures Sup. / Week-end)', 'Traçabilité exacte']],
-    body: traceRows.length ? traceRows : [['-', '-', 'Aucun dépassement', 'Aucune heure supplémentaire sur ce mois.']],
+    body: traceRows.length ? traceRows : [['-', '-', 'Aucun dépassement', 'Aucune heure supplémentaire ni prestation de week-end sur ce mois.']],
     theme: 'striped',
-    styles: { fontSize: 8 }
+    styles: { fontSize: 7.8 }
   });
 
   const mNum = String(rep.month).padStart(2, '0');
   const fileName = 'RB_RailVigie_Audit_' + rep.year + '_' + mNum + '.pdf';
-  return { doc: doc, fileName: fileName, rep: rep, monthFolder: monthFolder };
+  return { doc: doc, fileName: fileName, rep: rep, monthFolder: monthFolder, decSummaryText: decSummaryText, decDetailListText: decDetailListText };
 }
 
 function openExportModal() {
@@ -2763,9 +3108,9 @@ function downloadPDFDirect() {
   doc.save(fileName);
 }
 
-// Bouton bleu "Cloud" : Partage Natif Android & iOS (Drive, Mail, WhatsApp avec le fichier PDF joint)
+// Bouton bleu "Cloud" : Partage Natif Android & iOS (Drive, Mail, WhatsApp avec le fichier PDF joint et détail Découchers Courts/Longs)
 async function sharePDFNativeCloudOrMail() {
-  const { doc, fileName, rep, monthFolder } = buildAuditJsPDF();
+  const { doc, fileName, rep, monthFolder, decSummaryText, decDetailListText } = buildAuditJsPDF();
   const savedEmail = (document.getElementById('userEmailInput').value || '').trim();
   const cloudPath = 'Travail / ' + rep.year + ' / ' + monthFolder;
 
@@ -2780,7 +3125,9 @@ async function sharePDFNativeCloudOrMail() {
     try {
       await navigator.share({
         title: 'RB RailVigie — ' + monthFolder + ' ' + rep.year,
-        text: 'Rapport RB RailVigie (' + rep.driverName + ').\nDossier Cloud : ' + cloudPath + (savedEmail ? '\nDestinataire : ' + savedEmail : ''),
+        text: 'Rapport RB RailVigie (' + rep.driverName + ').\n' +
+              'Découchers : ' + decSummaryText + ' (' + decDetailListText + ').\n' +
+              'Dossier Cloud : ' + cloudPath + (savedEmail ? '\nDestinataire : ' + savedEmail : ''),
         files: [pdfFile]
       });
       return;
@@ -2792,7 +3139,7 @@ async function sharePDFNativeCloudOrMail() {
 }
 
 function sendPDFBySavedEmail() {
-  const { doc, fileName, rep, monthFolder } = buildAuditJsPDF();
+  const { doc, fileName, rep, monthFolder, decSummaryText, decDetailListText } = buildAuditJsPDF();
   const savedEmail = (document.getElementById('userEmailInput').value || '').trim();
   doc.save(fileName);
 
@@ -2805,6 +3152,8 @@ function sendPDFBySavedEmail() {
     '- Heures prestées : ' + formatMinToHHMM(rep.totalWorkMin) + '\n' +
     '- Week-end (Sam / Dim) : ' + formatMinToHHMM(rep.totalSatMin) + ' / ' + formatMinToHHMM(rep.totalSunMin) + '\n' +
     '- Repos RX / OO : ' + rep.usedCounts.RX + ' RX / ' + rep.usedCounts.OO + ' OO\n' +
+    '- Découchers (Courts <=24h / Longs >24h entre fins) : ' + decSummaryText + '\n' +
+    '- Détail Découchers : ' + decDetailListText + '\n' +
     '- Dossier Cloud : Travail / ' + rep.year + ' / ' + monthFolder + '\n'
   );
   window.location.href = 'mailto:' + encodeURIComponent(savedEmail) + '?subject=' + subject + '&body=' + body;
