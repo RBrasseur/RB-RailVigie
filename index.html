@@ -528,7 +528,7 @@
       <div class="rs-title-block">
         <div class="rs-title-row">
           <h1>RB RailVigie</h1>
-          <span id="saveStatusBadge" class="saved-pill">Sauvegardé • v16</span>
+          <span id="saveStatusBadge" class="saved-pill">Sauvegardé</span>
         </div>
         <p id="headerDriverSub" class="rs-subtitle">Vierge • Lineas / CP 226</p>
       </div>
@@ -845,7 +845,6 @@
               <th>Découcher (Lit)</th>
               <th>2e Presta (Lit 2)</th>
               <th>Trajet Hôtel (min)</th>
-              <th>Train / Note</th>
               <th>Durée Service</th>
               <th>Qualification</th>
               <th>Intervalle / Repos Avant</th>
@@ -1403,7 +1402,6 @@ function loadOctoberDemo() {
   document.getElementById('cnt_NMBS').value = '0';
   document.getElementById('cnt_REC').value = '27.2';
   document.getElementById('cnt_WKD').value = '4';
-  document.getElementById('cnt_WKD').value = '2';
   document.getElementById('cnt_ZZ').value = '0';
   document.getElementById('cnt_ZB').value = '10';
   document.getElementById('cnt_BLH').value = '0';
@@ -1990,7 +1988,9 @@ function recalculateAll() {
   };
 }
 
-// 9. Importation intelligente PDF E500 & Image (Filtrage strict Nom + Prénom, Rendu Vision PDF + Multi-modèles Gemini)
+// 9. Importation intelligente PDF E500 & Image (Filtrage strict Nom+Prénom + Double Vérification IA & Coordonnées)
+const COUNTER_KEYS_ORDER = ['RX', 'NMBS', 'REC', 'WKD', 'ZZ', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH'];
+
 function getDriverFilterTokens() {
   const rawInput = (document.getElementById('driverInput').value || '').trim();
   const rawFull = (document.getElementById('e500FullName').value || '').trim();
@@ -2007,36 +2007,79 @@ function lineMatchesDriverStrict(lineStr, requiredTokens) {
   return requiredTokens.every(tok => norm.includes(tok));
 }
 
-// Localise la page et la coordonnée verticale exacte (Y) où Nom ET Prénom apparaissent ensemble
-function locateDriverOnPdfPage(tcItems, requiredTokens) {
+// Localise la page, la coordonnée Y de la ligne du conducteur ET la coordonnée Y de l'en-tête du tableau E500
+function locateDriverAndHeaderOnPdfPage(tcItems, requiredTokens) {
   const items = tcItems.map(it => ({
-    str: it.str || '',
+    str: (it.str || '').trim(),
     norm: normalizeStr(it.str || ''),
-    x: it.transform ? it.transform[4] : 0,
-    y: it.transform ? it.transform[5] : 0
-  })).filter(it => it.norm.length > 0);
+    x: it.transform ? Math.round(it.transform[4]) : 0,
+    y: it.transform ? Math.round(it.transform[5]) : 0
+  })).filter(it => it.str.length > 0);
 
-  // On regroupe les items proches verticalement (±28 pts) pour vérifier que TOUS les tokens (ex: REMY + BRASSEUR) y figurent
+  let driverY = null;
+  let driverX = null;
+
   for (let i = 0; i < items.length; i++) {
     const center = items[i];
     const surnameTok = requiredTokens[requiredTokens.length - 1];
     if (!center.norm.includes(surnameTok) && !center.norm.includes(requiredTokens[0])) continue;
 
     const nearbyText = items
-      .filter(other => Math.abs(other.y - center.y) <= 28 && Math.abs(other.x - center.x) <= 260)
+      .filter(other => Math.abs(other.y - center.y) <= 26 && Math.abs(other.x - center.x) <= 260)
       .map(other => other.norm)
       .join(' ');
 
     if (requiredTokens.every(tok => nearbyText.includes(tok))) {
-      return { found: true, yPdf: center.y, xPdf: center.x };
+      driverY = center.y;
+      driverX = center.x;
+      break;
     }
   }
-  return { found: false, yPdf: null, xPdf: null };
+
+  if (driverY === null) {
+    return { found: false, yPdf: null, headerYPdf: null, structuredCoordText: '' };
+  }
+
+  // Recherche de la ligne d'en-tête des colonnes (où apparaissent WKD, REC, ZB, BELH, ou la suite 1 2 3 4 5...)
+  let headerY = null;
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    if (it.y <= driverY) continue; // L'en-tête est au-dessus de la ligne du conducteur (Y plus grand en PDF)
+    if (['WKD', 'REC', 'BELH', 'BTULH', 'NMBS'].includes(it.norm)) {
+      headerY = it.y;
+      break;
+    }
+  }
+
+  // Construction d'un relevé géométrique exact (trié de gauche à droite par coordonnée X)
+  let coordDump = '';
+  if (headerY !== null) {
+    const headerItems = items
+      .filter(it => Math.abs(it.y - headerY) <= 24)
+      .sort((a, b) => a.x - b.x);
+    coordDump += 'EN-TÊTE DES COLONNES (trié de gauche à droite avec coordonnée X) :\n';
+    coordDump += headerItems.map(it => '[X=' + it.x + '] "' + it.str + '"').join(' | ') + '\n\n';
+  }
+
+  // Tous les éléments de la bande horizontale du conducteur (±22 pts autour de driverY), triés par X puis Y
+  const rowItems = items
+    .filter(it => Math.abs(it.y - driverY) <= 22)
+    .sort((a, b) => (a.x !== b.x ? a.x - b.x : b.y - a.y));
+
+  coordDump += 'ÉLÉMENTS EXACTS SUR LA LIGNE DU CONDUCTEUR (triés de gauche à droite par coordonnée X) :\n';
+  coordDump += rowItems.map(it => '[X=' + it.x + ', Y=' + it.y + '] "' + it.str + '"').join(' | ') + '\n';
+
+  return {
+    found: true,
+    yPdf: driverY,
+    headerYPdf: headerY,
+    structuredCoordText: coordDump
+  };
 }
 
-// Convertit la page PDF (et un zoom sur la ligne du conducteur) en images JPEG pour Gemini Vision
-async function renderPdfPageAndCropForGemini(page, yPdfDriver) {
-  const scale = 2.2;
+// Rendu haute définition de la page PDF + Image composite (En-tête des colonnes collé juste au-dessus de la ligne du conducteur)
+async function renderPdfPageAndCropForGemini(page, yPdfDriver, headerYPdf) {
+  const scale = 2.6;
   const viewport = page.getViewport({ scale: scale });
   const canvas = document.createElement('canvas');
   canvas.width = viewport.width;
@@ -2046,13 +2089,14 @@ async function renderPdfPageAndCropForGemini(page, yPdfDriver) {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-  const fullPageB64 = canvas.toDataURL('image/jpeg', 0.88).split(',')[1];
+  const fullPageB64 = canvas.toDataURL('image/jpeg', 0.90).split(',')[1];
 
   let croppedStripB64 = null;
+  let compositeHeaderAndRowB64 = null;
+
   if (yPdfDriver !== null && yPdfDriver !== undefined) {
-    // En PDF, l'axe Y part du bas vers le haut ; sur le canvas, Y part du haut vers le bas
     const yCanvas = viewport.height - (yPdfDriver * scale);
-    const bandHalfHeight = Math.round(65 * scale);
+    const bandHalfHeight = Math.round(58 * scale);
     const sy = Math.max(0, Math.round(yCanvas - bandHalfHeight));
     const sh = Math.min(canvas.height - sy, bandHalfHeight * 2);
 
@@ -2064,22 +2108,50 @@ async function renderPdfPageAndCropForGemini(page, yPdfDriver) {
       sCtx.fillStyle = '#ffffff';
       sCtx.fillRect(0, 0, stripCanvas.width, stripCanvas.height);
       sCtx.drawImage(canvas, 0, sy, canvas.width, sh, 0, 0, canvas.width, sh);
-      croppedStripB64 = stripCanvas.toDataURL('image/jpeg', 0.92).split(',')[1];
+      croppedStripB64 = stripCanvas.toDataURL('image/jpeg', 0.94).split(',')[1];
+
+      // Création d'une image composite : Bande d'en-tête du tableau + Ligne du conducteur alignées verticalement !
+      const headerYCanvas = headerYPdf !== null
+        ? (viewport.height - (headerYPdf * scale))
+        : Math.round(viewport.height * 0.14);
+      const hSy = Math.max(0, Math.round(headerYCanvas - 45 * scale));
+      const hSh = Math.min(canvas.height - hSy, Math.round(90 * scale));
+
+      if (hSh > 20) {
+        const compCanvas = document.createElement('canvas');
+        compCanvas.width = canvas.width;
+        compCanvas.height = hSh + sh + 6;
+        const cCtx = compCanvas.getContext('2d');
+        cCtx.fillStyle = '#ffffff';
+        cCtx.fillRect(0, 0, compCanvas.width, compCanvas.height);
+        // En haut : l'en-tête avec les titres des colonnes (RX, NMBS, REC, WKD, ZZ, ZB, BLH, BELH, BTH, BTULH, 1..31)
+        cCtx.drawImage(canvas, 0, hSy, canvas.width, hSh, 0, 0, canvas.width, hSh);
+        // Ligne de séparation repère
+        cCtx.fillStyle = '#f59e0b';
+        cCtx.fillRect(0, hSh, canvas.width, 6);
+        // Juste en dessous au même X : la ligne du conducteur !
+        cCtx.drawImage(canvas, 0, sy, canvas.width, sh, 0, hSh + 6, canvas.width, sh);
+        compositeHeaderAndRowB64 = compCanvas.toDataURL('image/jpeg', 0.94).split(',')[1];
+      }
     }
   }
-  return { fullPageB64: fullPageB64, croppedStripB64: croppedStripB64 };
+  return {
+    fullPageB64: fullPageB64,
+    croppedStripB64: croppedStripB64,
+    compositeHeaderAndRowB64: compositeHeaderAndRowB64
+  };
 }
 
 function extractDriverSectionFromPdfPages(pagesLines, requiredTokens) {
   const matchedBlocks = [];
   for (let p = 0; p < pagesLines.length; p++) {
     const lines = pagesLines[p];
-    const headerLines = lines.slice(0, Math.min(14, lines.length));
+    const headerLines = lines.slice(0, Math.min(15, lines.length));
     for (let i = 0; i < lines.length; i++) {
       const window4 = [lines[i - 1] || '', lines[i] || '', lines[i + 1] || '', lines[i + 2] || ''].join(' ');
       if (lineMatchesDriverStrict(window4, requiredTokens)) {
-        const start = Math.max(0, i - 8);
-        const end = Math.min(lines.length, i + 45);
+        const start = Math.max(0, i - 6);
+        const end = Math.min(lines.length, i + 40);
         const excerpt = lines.slice(start, end).join('\n');
         matchedBlocks.push('=== PAGE ' + (p + 1) + ' (EN-TÊTE) ===\n' + headerLines.join('\n') + '\n=== LIGNE CONDUCTEUR CIBLE ===\n' + excerpt);
         i += 18;
@@ -2089,6 +2161,7 @@ function extractDriverSectionFromPdfPages(pagesLines, requiredTokens) {
   return matchedBlocks.join('\n\n');
 }
 
+// Préparation haute définition de l'image (jusqu'à 3200px de large pour garder une netteté parfaite sur les 45 colonnes)
 function compressImageFileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -2098,8 +2171,8 @@ function compressImageFileToBase64(file) {
       const img = new Image();
       img.onload = function() {
         try {
-          const maxDim = 2200;
-          let w = img.width || 1200;
+          const maxDim = 3200;
+          let w = img.width || 1600;
           let h = img.height || 600;
           if (w > maxDim || h > maxDim) {
             if (w > h) {
@@ -2117,7 +2190,7 @@ function compressImageFileToBase64(file) {
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(0, 0, w, h);
           ctx.drawImage(img, 0, 0, w, h);
-          const jpegUrl = canvas.toDataURL('image/jpeg', 0.90);
+          const jpegUrl = canvas.toDataURL('image/jpeg', 0.94);
           resolve({
             base64Data: jpegUrl.split(',')[1],
             mimeType: 'image/jpeg'
@@ -2170,6 +2243,7 @@ async function getAvailableGeminiModels(cleanKey) {
     function scoreModel(id) {
       const s = id.toLowerCase();
       if (s === 'gemini-2.5-flash') return 100;
+      if (s === 'gemini-2.5-pro') return 98;
       if (s === 'gemini-2.0-flash') return 95;
       if (s.startsWith('gemini-2.5-flash') && !s.includes('lite')) return 90;
       if (s.startsWith('gemini-3') && s.includes('flash')) return 88;
@@ -2204,7 +2278,7 @@ async function callGeminiWithFallback(parts, apiKey) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: parts }],
-          generationConfig: { temperature: 0.1 }
+          generationConfig: { temperature: 0.0 }
         })
       });
       const json = await resp.json();
@@ -2245,6 +2319,192 @@ async function callGeminiWithFallback(parts, apiKey) {
   throw new Error(non404 || errors[0] || 'Aucun modèle Gemini disponible pour cette clé.');
 }
 
+// Instructions anatomiques strictes d'une ligne E500 Lineas / SIBELIT
+function getE500StrictRulesPrompt(targetName, firstNameToken) {
+  return 'Tu es un auditeur expert en plannings ferroviaires Lineas / SIBELIT (grille mensuelle E500).\n' +
+    'RÈGLE D\'IDENTITÉ STRICTE (ANTI-HOMONYME) :\n' +
+    '- Il existe deux conducteurs nommés "BRASSEUR". Tu dois extraire EXCLUSIVEMENT la ligne qui correspond à la fois au nom ET au prénom : "' + targetName + '" (ex: "Rémy Marcel L BRASSEUR"). Ignore tout autre "BRASSEUR" n\'ayant pas le prénom "' + firstNameToken + '".\n' +
+    '- Si l\'image fournie montre uniquement une seule ligne d\'horaire découpée, traite cette ligne.\n\n' +
+    'RÈGLE CRITIQUE SUR LES 10 COMPTEURS (ORDRE STRICT DE GAUCHE À DROITE) :\n' +
+    'Sur une feuille E500, immédiatement après le nom/matricule et AVANT le jour 1 du mois, il y a EXACTEMENT 10 colonnes de compteurs dans cet ordre immuable de gauche à droite :\n' +
+    '  1. RX    (Jours de repos périodiques — ex: 118)\n' +
+    '  2. NMBS  (Congés SNCB — souvent 0)\n' +
+    '  3. REC   (Heures de récupération — nombre souvent décimal, ex: 27.2)\n' +
+    '  4. WKD   (Repos de week-end — situé EN 4e POSITION, JUSTE À DROITE DE REC ! Ex: 4)\n' +
+    '  5. ZZ    (Jours de maladie — situé EN 5e POSITION, ENTRE WKD ET ZB ! Ex: 0)\n' +
+    '  6. ZB    (Congé sans solde 45+ — situé EN 6e POSITION, JUSTE APRÈS ZZ ! Ex: 10)\n' +
+    '  7. BLH   (Solde congés légaux — situé en 7e position)\n' +
+    '  8. BELH  (Solde congés extralégaux — situé en 8e position, souvent décimal, ex: 6.5)\n' +
+    '  9. BTH   (Congés reportés N-1 — situé en 9e position)\n' +
+    '  10. BTULH (Congés légaux non rémunérés — situé en 10e position)\n' +
+    '⚠️ ATTENTION EXTRÊME : Ne décale JAMAIS les colonnes ! Ne confonds JAMAIS la colonne 4 (WKD, juste après REC) avec la colonne 5 (ZZ, juste avant ZB). Lis d\'abord les 10 valeurs dans l\'ordre exact de gauche à droite dans le tableau "countersLeftToRight" de 10 éléments, puis remplis l\'objet "counters". Utilise le point "." pour les décimales.\n\n' +
+    'RÈGLE SUR LES 31 JOURS DU MOIS (COLONNES 1 À 31 DE GAUCHE À DROITE) :\n' +
+    '- Chaque colonne de jour (1 à 31) contient :\n' +
+    '  * Soit une prestation active avec heure de début en haut et heure de fin en bas (ex: 13:00 et 22:35) -> mets "code":"BVTS", "start":"HH:MM", "end":"HH:MM".\n' +
+    '  * Soit un symbole de lit / découcher hôtel -> mets "lit":"aller" sur le service qui part découcher et "lit":"retour" sur le service du lendemain qui rentre du découcher.\n' +
+    '  * Soit un code de repos/congé sans heure : "RX", "OO" (parfois écrit "00" sur la grille), "ELH", "REC", "WKD", "ZZ", "ZB", "BLH", "BELH", "BTH", "BTULH", "NMBS". Si c\'est écrit "00", convertis-le en "OO".\n\n' +
+    'Renvoie UNIQUEMENT un objet JSON valide respectant strictement cette structure :\n' +
+    '{\n' +
+    '  "fullName": "Rémy Marcel L BRASSEUR",\n' +
+    '  "matricule": "899008349",\n' +
+    '  "countersLeftToRight": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],\n' +
+    '  "counters": {"RX":0, "NMBS":0, "REC":0, "WKD":0, "ZZ":0, "ZB":0, "BLH":0, "BELH":0, "BTH":0, "BTULH":0},\n' +
+    '  "days": [{"day":1, "code":"BVTS", "start":"13:00", "end":"22:35", "lit":"none", "trajetMin":0}]\n' +
+    '}';
+}
+
+// Passe 2 : Contre-vérification minutieuse (Auto-Audit cellule par cellule)
+async function verifyAndRefineExtraction(initialData, visualParts, coordText, apiKey, requiredTokens) {
+  try {
+    const targetName = requiredTokens.join(' ');
+    const auditPrompt = 'Tu es le contrôleur de vérification finale (Passe 2/2) pour le planning E500 de "' + targetName + '".\n' +
+      'Voici le JSON extrait lors de la Passe 1 :\n' +
+      JSON.stringify(initialData) + '\n\n' +
+      'TA MISSION DE VÉRIFICATION SCRUPULEUSE :\n' +
+      '1. Vérifie les 10 compteurs de gauche à droite : [1:RX, 2:NMBS, 3:REC, 4:WKD, 5:ZZ, 6:ZB, 7:BLH, 8:BELH, 9:BTH, 10:BTULH].\n' +
+      '   - Regarde attentivement les nombres situés entre RX (1er compteur) et BELH (8e compteur).\n' +
+      '   - Juste après REC (3e compteur), la 4e colonne est WKD. La 5e colonne est ZZ. La 6e colonne est ZB.\n' +
+      '   - Si la Passe 1 a mis la valeur de WKD dans ZZ (ou inversement), CORRIGE-LE IMMÉDIATEMENT !\n' +
+      '   - Vérifie que REC et BELH ont bien leurs décimales exactes (ex: 27.2, 6.5).\n' +
+      '2. Vérifie chaque jour de 1 à 31 :\n' +
+      '   - Vérifie qu\'aucun jour n\'est décalé d\'une colonne.\n' +
+      '   - Vérifie que chaque "00" est bien codé "OO", chaque "RX" est bien "RX", et que les heures de début et de fin de chaque prestation (BVTS) ainsi que les lits ("aller" puis "retour") sont exacts.\n' +
+      (coordText ? ('\nDonnées géométriques de contrôle extraites du PDF :\n' + coordText.slice(0, 10000) + '\n') : '') +
+      '\nRenvoie UNIQUEMENT le JSON final corrigé et vérifié (même structure exacte).';
+
+    const parts = [{ text: auditPrompt }].concat(visualParts);
+    const verified = await callGeminiWithFallback(parts, apiKey);
+    if (verified && (verified.days || verified.counters)) {
+      return verified;
+    }
+    return initialData;
+  } catch (e) {
+    // Si la passe 2 rencontre une limite réseau, on conserve la passe 1
+    return initialData;
+  }
+}
+
+function sanitizeCounterNumber(val) {
+  if (val === undefined || val === null || val === '') return null;
+  const cleaned = String(val).replace(',', '.').replace(/[^0-9.-]/g, '').trim();
+  if (!cleaned || isNaN(Number(cleaned))) return null;
+  return String(Number(cleaned));
+}
+
+function applyExtractedJsonToSchedule(data, requiredTokens) {
+  if (!data) return false;
+  const obj = Array.isArray(data) ? { days: data } : data;
+
+  if (obj.fullName) {
+    const normName = normalizeStr(obj.fullName);
+    if (normName.includes('BRASSEUR') && requiredTokens.includes('REMY') && !normName.includes('REMY') && !normName.includes('MARCEL')) {
+      throw new Error('Ligne ignorée car elle correspond à un autre BRASSEUR (' + obj.fullName + ').');
+    }
+    document.getElementById('e500FullName').value = obj.fullName;
+  } else if (requiredTokens.includes('REMY') && requiredTokens.includes('BRASSEUR')) {
+    document.getElementById('e500FullName').value = 'Rémy Marcel L BRASSEUR';
+  }
+
+  if (obj.matricule) {
+    document.getElementById('driverMatricule').value = String(obj.matricule).trim();
+  }
+
+  // Si l'IA a fourni le tableau ordonné des 10 compteurs de gauche à droite, on l'utilise en priorité pour éviter toute confusion de clé
+  if (Array.isArray(obj.countersLeftToRight) && obj.countersLeftToRight.length === 10) {
+    COUNTER_KEYS_ORDER.forEach((key, idx) => {
+      const cleanVal = sanitizeCounterNumber(obj.countersLeftToRight[idx]);
+      if (cleanVal !== null) {
+        const el = document.getElementById('cnt_' + key);
+        if (el) el.value = cleanVal;
+      }
+    });
+  }
+
+  if (obj.counters && typeof obj.counters === 'object') {
+    COUNTER_KEYS_ORDER.forEach(k => {
+      const cleanVal = sanitizeCounterNumber(obj.counters[k]);
+      if (cleanVal !== null) {
+        const el = document.getElementById('cnt_' + k);
+        if (el) el.value = cleanVal;
+      }
+    });
+  }
+
+  let daysList = obj.days || obj.schedule || obj.jours || obj.prestations || obj.services;
+  if (!Array.isArray(daysList) && daysList && typeof daysList === 'object') {
+    daysList = Object.keys(daysList).map(k => Object.assign({ day: parseInt(k, 10) }, daysList[k]));
+  }
+
+  if (Array.isArray(daysList) && daysList.length > 0) {
+    const m = parseInt(document.getElementById('monthSelect').value, 10);
+    const y = parseInt(document.getElementById('yearInput').value, 10);
+    scheduleData = createBlankSchedule(m, y);
+
+    daysList.forEach(item => {
+      const d = parseInt(item.day !== undefined ? item.day : item.jour, 10);
+      const row = scheduleData.find(r => r.day === d);
+      if (row) {
+        let rawCode = String(item.code || '').toUpperCase().trim();
+        if (rawCode === '00') rawCode = 'OO';
+        row.code = CODES.includes(rawCode) ? rawCode : (item.start ? 'BVTS' : '-');
+        row.start = (item.start || '').replace(/[hH.]/, ':').trim();
+        row.end = (item.end || '').replace(/[hH.]/, ':').trim();
+        row.lit = ['none', 'aller', 'retour', '2'].includes(item.lit) ? item.lit : 'none';
+        row.trajetMin = parseInt(item.trajetMin || 0, 10) || 0;
+        row.note = item.note || '';
+      }
+    });
+    checkDriverMatch();
+    renderTable();
+    recalculateAll();
+    return true;
+  }
+  return false;
+}
+
+async function parseScheduleWithGeminiPdfVision(rendered, extractedText, coordText, apiKey, requiredTokens, statusEl) {
+  const targetName = requiredTokens.join(' ');
+  const prompt = getE500StrictRulesPrompt(targetName, requiredTokens[0]) +
+    '\n\nDONNÉES GÉOMÉTRIQUES ET TEXTUELLES EXTRAITES DU PDF :\n' +
+    (coordText ? (coordText + '\n') : '') +
+    (extractedText || '').slice(0, 10000);
+
+  const visualParts = [];
+  if (rendered.compositeHeaderAndRowB64) {
+    visualParts.push({ inline_data: { mime_type: 'image/jpeg', data: rendered.compositeHeaderAndRowB64 } });
+  }
+  if (rendered.croppedStripB64) {
+    visualParts.push({ inline_data: { mime_type: 'image/jpeg', data: rendered.croppedStripB64 } });
+  }
+  if (rendered.fullPageB64) {
+    visualParts.push({ inline_data: { mime_type: 'image/jpeg', data: rendered.fullPageB64 } });
+  }
+
+  const pass1Parts = [{ text: prompt }].concat(visualParts);
+  const pass1Data = await callGeminiWithFallback(pass1Parts, apiKey);
+
+  if (statusEl) {
+    statusEl.textContent = '🔍 Passe 2/2 : Contre-vérification minutieuse des 10 compteurs et des 31 jours...';
+  }
+  const finalData = await verifyAndRefineExtraction(pass1Data, visualParts, coordText, apiKey, requiredTokens);
+  return applyExtractedJsonToSchedule(finalData, requiredTokens);
+}
+
+async function parseScheduleWithGeminiImage(base64Data, mimeType, apiKey, requiredTokens, statusEl) {
+  const targetName = requiredTokens.join(' ');
+  const prompt = getE500StrictRulesPrompt(targetName, requiredTokens[0]);
+  const visualParts = [{ inline_data: { mime_type: mimeType, data: base64Data } }];
+
+  const pass1Parts = [{ text: prompt }].concat(visualParts);
+  const pass1Data = await callGeminiWithFallback(pass1Parts, apiKey);
+
+  if (statusEl) {
+    statusEl.textContent = '🔍 Passe 2/2 : Contre-vérification minutieuse des 10 compteurs et des 31 jours...';
+  }
+  const finalData = await verifyAndRefineExtraction(pass1Data, visualParts, '', apiKey, requiredTokens);
+  return applyExtractedJsonToSchedule(finalData, requiredTokens);
+}
+
 async function handleScheduleFileImport(event) {
   const file = event.target.files && event.target.files[0];
   if (!file) return;
@@ -2257,7 +2517,7 @@ async function handleScheduleFileImport(event) {
   const targetLabel = requiredTokens.join(' ');
 
   statusEl.style.color = 'var(--accent)';
-  statusEl.textContent = '⏳ Analyse de "' + file.name + '" (Cible : ' + targetLabel + ')...';
+  statusEl.textContent = '⏳ Passe 1/2 : Analyse haute précision de "' + file.name + '" (' + targetLabel + ')...';
 
   if (isPdf) {
     try {
@@ -2270,16 +2530,19 @@ async function handleScheduleFileImport(event) {
       let fullText = '';
       let matchedPageObj = null;
       let matchedY = null;
+      let matchedHeaderY = null;
+      let matchedCoordText = '';
 
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const tc = await page.getTextContent();
 
-        // Recherche géométrique (X, Y) stricte sur Nom + Prénom (ex: REMY + BRASSEUR)
-        const loc = locateDriverOnPdfPage(tc.items, requiredTokens);
+        const loc = locateDriverAndHeaderOnPdfPage(tc.items, requiredTokens);
         if (loc.found && !matchedPageObj) {
           matchedPageObj = page;
           matchedY = loc.yPdf;
+          matchedHeaderY = loc.headerYPdf;
+          matchedCoordText = loc.structuredCoordText;
         }
 
         const pageMap = {};
@@ -2298,24 +2561,25 @@ async function handleScheduleFileImport(event) {
 
       const filteredText = extractDriverSectionFromPdfPages(pagesLines, requiredTokens);
 
-      // Si une clé Gemini est présente, on utilise la vision IA sur la page/bande trouvée + le texte filtré
       if (apiKey) {
         const pageToRender = matchedPageObj || (await pdf.getPage(1));
-        statusEl.textContent = '⏳ Découpage de la ligne "' + targetLabel + '" et lecture Vision IA Gemini...';
+        statusEl.textContent = '⏳ Passe 1/2 : Découpage En-tête + Ligne "' + targetLabel + '" et lecture Vision IA...';
         try {
-          const rendered = await renderPdfPageAndCropForGemini(pageToRender, matchedY);
+          const rendered = await renderPdfPageAndCropForGemini(pageToRender, matchedY, matchedHeaderY);
           const textForAi = filteredText ? filteredText : fullText.slice(0, 18000);
-          const parsedByAi = await parseScheduleWithGeminiPdfVision(rendered, textForAi, apiKey, requiredTokens);
+          const parsedByAi = await parseScheduleWithGeminiPdfVision(
+            rendered, textForAi, matchedCoordText, apiKey, requiredTokens, statusEl
+          );
           if (parsedByAi) {
             statusEl.style.color = 'var(--green)';
-            statusEl.textContent = '✓ PDF E500 importé avec succès pour ' + targetLabel + ' !';
+            statusEl.textContent = '✓ PDF E500 importé et vérifié (2 passes) pour ' + targetLabel + ' !';
             saveStateToLocal(true);
             switchTab(4);
             event.target.value = '';
             return;
           } else {
             statusEl.style.color = 'var(--red)';
-            statusEl.textContent = '❌ L\'IA a lu le PDF mais n\'a trouvé aucune prestation pour "' + targetLabel + '".';
+            statusEl.textContent = '❌ Aucune prestation trouvée pour "' + targetLabel + '".';
             event.target.value = '';
             return;
           }
@@ -2327,7 +2591,6 @@ async function handleScheduleFileImport(event) {
         }
       }
 
-      // Si AUCUNE clé API Gemini n'est renseignée
       const count = parseLocalScheduleText(filteredText || fullText, requiredTokens);
       if (count > 0) {
         statusEl.style.color = 'var(--green)';
@@ -2351,12 +2614,12 @@ async function handleScheduleFileImport(event) {
       return;
     }
     try {
-      statusEl.textContent = '⏳ Préparation de l\'image et lecture Gemini pour ' + targetLabel + '...';
+      statusEl.textContent = '⏳ Passe 1/2 : Lecture haute définition de l\'image pour ' + targetLabel + '...';
       const imgObj = await compressImageFileToBase64(file);
-      const ok = await parseScheduleWithGeminiImage(imgObj.base64Data, imgObj.mimeType, apiKey, requiredTokens);
+      const ok = await parseScheduleWithGeminiImage(imgObj.base64Data, imgObj.mimeType, apiKey, requiredTokens, statusEl);
       if (ok) {
         statusEl.style.color = 'var(--green)';
-        statusEl.textContent = '✓ Image de la ligne importée avec succès !';
+        statusEl.textContent = '✓ Image importée et vérifiée (2 passes) avec succès !';
         saveStateToLocal(true);
         switchTab(4);
       } else {
@@ -2369,108 +2632,6 @@ async function handleScheduleFileImport(event) {
     }
     event.target.value = '';
   }
-}
-
-function applyExtractedJsonToSchedule(data, requiredTokens) {
-  if (!data) return false;
-  const obj = Array.isArray(data) ? { days: data } : data;
-
-  if (obj.fullName) {
-    const normName = normalizeStr(obj.fullName);
-    if (normName.includes('BRASSEUR') && requiredTokens.includes('REMY') && !normName.includes('REMY') && !normName.includes('MARCEL')) {
-      throw new Error('Ligne ignorée car elle correspond à un autre BRASSEUR (' + obj.fullName + ').');
-    }
-    document.getElementById('e500FullName').value = obj.fullName;
-  } else if (requiredTokens.includes('REMY') && requiredTokens.includes('BRASSEUR')) {
-    document.getElementById('e500FullName').value = 'Rémy Marcel L BRASSEUR';
-  }
-  if (obj.matricule) {
-    document.getElementById('driverMatricule').value = String(obj.matricule);
-  }
-  if (obj.counters && typeof obj.counters === 'object') {
-    ['RX', 'NMBS', 'REC', 'WKD', 'ZZ', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH'].forEach(k => {
-      if (obj.counters[k] !== undefined && obj.counters[k] !== null && obj.counters[k] !== '') {
-        const el = document.getElementById('cnt_' + k);
-        if (el) el.value = String(obj.counters[k]);
-      }
-    });
-  }
-
-  let daysList = obj.days || obj.schedule || obj.jours || obj.prestations || obj.services;
-  if (!Array.isArray(daysList) && daysList && typeof daysList === 'object') {
-    daysList = Object.keys(daysList).map(k => Object.assign({ day: parseInt(k, 10) }, daysList[k]));
-  }
-
-  if (Array.isArray(daysList) && daysList.length > 0) {
-    const m = parseInt(document.getElementById('monthSelect').value, 10);
-    const y = parseInt(document.getElementById('yearInput').value, 10);
-    scheduleData = createBlankSchedule(m, y);
-
-    daysList.forEach(item => {
-      const d = parseInt(item.day !== undefined ? item.day : item.jour, 10);
-      const row = scheduleData.find(r => r.day === d);
-      if (row) {
-        const rawCode = String(item.code || '').toUpperCase().trim();
-        row.code = CODES.includes(rawCode) ? rawCode : (item.start ? 'BVTS' : '-');
-        row.start = (item.start || '').replace(/[hH.]/, ':');
-        row.end = (item.end || '').replace(/[hH.]/, ':');
-        row.lit = ['none', 'aller', 'retour', '2'].includes(item.lit) ? item.lit : 'none';
-        row.trajetMin = parseInt(item.trajetMin || 0, 10) || 0;
-        row.note = item.note || '';
-      }
-    });
-    checkDriverMatch();
-    renderTable();
-    recalculateAll();
-    return true;
-  }
-  return false;
-}
-
-async function parseScheduleWithGeminiPdfVision(rendered, extractedText, apiKey, requiredTokens) {
-  const targetName = requiredTokens.join(' ');
-  const prompt = 'Tu es un expert en plannings ferroviaires Lineas / SIBELIT (grille E500).\n' +
-    'ATTENTION : Il peut y avoir deux conducteurs nommés "BRASSEUR". Tu dois extraire EXCLUSIVEMENT la ligne qui correspond à la fois au nom ET au prénom : "' + targetName + '" (Rémy Marcel L BRASSEUR). Ignore strictement tout autre "BRASSEUR" qui n\'a pas le prénom "' + requiredTokens[0] + '".\n' +
-    'Tu disposes de l\'image de la grille (et du zoom sur la ligne de ' + targetName + ') ainsi que du texte extrait.\n' +
-    'Pour chaque jour du mois (de 1 à 31) :\n' +
-    '- S\'il y a des heures de prestation (ex: 08:00 15:36 ou 15:55 00:55), mets "code":"BVTS", "start":"HH:MM", "end":"HH:MM".\n' +
-    '- S\'il y a un symbole de lit / découcher hôtel, mets "lit":"aller" sur le 1er service et "lit":"retour" sur le service du lendemain.\n' +
-    '- S\'il y a un code de repos ou congé (RX, OO, ELH, REC, WKD, ZZ, ZB, BLH, BELH, BTH, BTULH, NMBS), indique ce code avec start:"" et end:"".\n' +
-    'Extrais aussi les compteurs visibles (RX, NMBS, REC, WKD, ZZ, ZB, BLH, BELH, BTH, BTULH).\n' +
-    'Renvoie UNIQUEMENT un objet JSON valide de la forme :\n' +
-    '{"fullName":"Rémy Marcel L BRASSEUR","matricule":"899008349","counters":{"RX":118,"REC":27.2,"WKD":2,"ZB":10,"BELH":6.5},"days":[{"day":1,"code":"BVTS","start":"13:00","end":"22:35","lit":"none","trajetMin":0}]}\n\n' +
-    'Texte de repère extrait du PDF :\n' + (extractedText || '').slice(0, 12000);
-
-  const parts = [{ text: prompt }];
-  if (rendered.croppedStripB64) {
-    parts.push({ inline_data: { mime_type: 'image/jpeg', data: rendered.croppedStripB64 } });
-  }
-  if (rendered.fullPageB64) {
-    parts.push({ inline_data: { mime_type: 'image/jpeg', data: rendered.fullPageB64 } });
-  }
-
-  const parsed = await callGeminiWithFallback(parts, apiKey);
-  return applyExtractedJsonToSchedule(parsed, requiredTokens);
-}
-
-async function parseScheduleWithGeminiImage(base64Data, mimeType, apiKey, requiredTokens) {
-  const targetName = requiredTokens.join(' ');
-  const prompt = 'Tu es un expert en plannings ferroviaires Lineas / SIBELIT (grille E500).\n' +
-    'Cette image montre la ligne d\'horaire mensuel (jours 1 à 31) du conducteur "' + targetName + '" (Rémy Marcel L BRASSEUR).\n' +
-    'Si plusieurs lignes apparaissent, ne traite QUE celle de "' + targetName + '" (vérifie à la fois le nom ET le prénom, ignore tout autre BRASSEUR). Si l\'image ne montre qu\'une seule ligne coupée sans le nom complet, traite cette ligne.\n' +
-    'Pour chaque jour du mois (de 1 à 31) :\n' +
-    '- S\'il y a des heures de prestation (ex: 08:00 15:36 ou 15:55 00:55), mets "code":"BVTS", "start":"HH:MM", "end":"HH:MM".\n' +
-    '- S\'il y a un symbole de lit / découcher hôtel, mets "lit":"aller" sur le service aller et "lit":"retour" sur le service retour.\n' +
-    '- S\'il y a un code de repos ou congé (RX, OO, ELH, REC, WKD, ZZ, ZB, BLH, BELH, BTH, BTULH, NMBS), indique ce code avec start:"" et end:"".\n' +
-    'Extrais aussi les compteurs visibles (RX, NMBS, REC, WKD, ZZ, ZB, BLH, BELH, BTH, BTULH).\n' +
-    'Renvoie UNIQUEMENT un objet JSON valide de la forme :\n' +
-    '{"fullName":"Rémy Marcel L BRASSEUR","matricule":"","counters":{},"days":[{"day":1,"code":"BVTS","start":"13:00","end":"22:35","lit":"none","trajetMin":0}]}';
-
-  const parsed = await callGeminiWithFallback([
-    { text: prompt },
-    { inline_data: { mime_type: mimeType, data: base64Data } }
-  ], apiKey);
-  return applyExtractedJsonToSchedule(parsed, requiredTokens);
 }
 
 function parseLocalScheduleText(text, requiredTokens) {

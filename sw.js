@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rb-railvigie-v16';
+const CACHE_NAME = 'rb-railvigie-clean-pro';
 const ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (event) => {
