@@ -1519,6 +1519,19 @@ function updateSecondShift(idx, val) {
 }
 
 // 8. Moteur de Calcul Réglementaire CP 226
+const REST_OR_LEAVE_CODES = ['RX', 'OO', 'ELH', 'REC', 'WKD', 'ZZ', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH', 'NMBS', '-'];
+const WORK_PRESTA_CODES = ['BVTS', 'SIM', 'CTFT', 'CTFP'];
+
+function isWorkedPrestationRow(r) {
+  if (!r) return false;
+  const sMin = parseTimeToMin(r.start);
+  const eMin = parseTimeToMin(r.end);
+  if (sMin !== null && eMin !== null && !REST_OR_LEAVE_CODES.includes(r.code)) {
+    return true;
+  }
+  return WORK_PRESTA_CODES.includes(r.code) && sMin !== null && eMin !== null;
+}
+
 function recalculateAll() {
   const m = parseInt(document.getElementById('monthSelect').value, 10);
   const y = parseInt(document.getElementById('yearInput').value, 10);
@@ -1549,7 +1562,7 @@ function recalculateAll() {
     const startMin = parseTimeToMin(r.start);
     const endMin = parseTimeToMin(r.end);
 
-    if (['BVTS', 'SIM', 'CTFT', 'CTFP'].includes(r.code) && startMin !== null && endMin !== null) {
+    if (isWorkedPrestationRow(r)) {
       serviceCount++;
       const absStart = (r.day - 1) * 1440 + startMin;
       const absEnd = endMin >= startMin
@@ -1627,7 +1640,7 @@ function recalculateAll() {
           type: 'WEEKEND',
           day: r.day,
           label: 'Jour ' + r.day + ' (Sam) : Heures Samedi (' + formatMinToHHMM(dayWorkMin) + ')',
-          detail: 'Prestation débutée le samedi à ' + r.start + ' (fin ' + r.end + ') ➔ 100 % comptabilisé en Samedi.'
+          detail: 'Prestation (' + r.code + ') débutée le samedi à ' + r.start + ' (fin ' + r.end + ') ➔ 100 % comptabilisé en Samedi.'
         });
       } else if (dow === 0) {
         totalSunMin += dayWorkMin;
@@ -1636,12 +1649,12 @@ function recalculateAll() {
           type: 'WEEKEND',
           day: r.day,
           label: 'Jour ' + r.day + ' (Dim) : Heures Dimanche (' + formatMinToHHMM(dayWorkMin) + ')',
-          detail: 'Prestation débutée le dimanche à ' + r.start + ' (fin ' + r.end + ') ➔ 100 % comptabilisé en Dimanche.'
+          detail: 'Prestation (' + r.code + ') débutée le dimanche à ' + r.start + ' (fin ' + r.end + ') ➔ 100 % comptabilisé en Dimanche.'
         });
       } else if (dow === 5 && endMin < startMin) {
         qualBadge = '<span class="badge b-ok">Ven➔Sam (100% Sem)</span>';
       } else {
-        qualBadge = '<span class="badge b-ok">Semaine</span>';
+        qualBadge = '<span class="badge b-ok">' + (r.code !== 'BVTS' ? r.code + ' (Sem)' : 'Semaine') + '</span>';
       }
 
       if (dayWorkMin > 600) {
@@ -1652,7 +1665,7 @@ function recalculateAll() {
           type: 'OT_DAY',
           day: r.day,
           label: 'Jour ' + r.day + ' : Heures Sup. Journalières (+' + formatMinToHHMM(otDay) + ')',
-          detail: 'Durée totale ' + formatMinToHHMM(dayWorkMin) + ' (> 10h00) sur le service ' + r.start + '-' + r.end + '. ' + (r.note ? 'Note : ' + r.note : '')
+          detail: 'Durée totale ' + formatMinToHHMM(dayWorkMin) + ' (> 10h00) sur le service ' + r.code + ' ' + r.start + '-' + r.end + '.'
         });
       }
     } else if (r.code === 'RX') {
@@ -1679,7 +1692,7 @@ function recalculateAll() {
     if (rowEl) rowEl.classList.remove('row-anomaly');
   });
 
-  // Contrôle des intervalles entre prestations (14h, <=12h, rattrapage, hôtel 9h, RX 38h/62h vs OO)
+  // Contrôle des intervalles entre prestations (14h, <=12h, rattrapage, hôtel 9h, RX 38h + 24h/RX supp. vs OO)
   let pendingHomeRestDebtMin = 0;
   let pendingDebtOriginDay = null;
   const weeklyReductionsCount = {};
@@ -1719,38 +1732,42 @@ function recalculateAll() {
         });
       }
     } else if (rxCount > 0 || ooCount > 0) {
-      const requiredRxMin = rxCount > 0 ? (38 * 60 + (rxCount - 1) * 24 * 60) : 38 * 60;
+      // Règle CP 226 : 1er RX = 38h00, chaque RX consécutif suivant ajoute +24h00 (ex: 2 RX = 62h, 3 RX = 86h)
+      const requiredRxMin = rxCount > 0 ? (38 * 60 + (rxCount - 1) * 24 * 60) : 0;
+      const totalRestDaysCount = rxCount + ooCount;
+      const fullRxEquivalentMin = 38 * 60 + (totalRestDaysCount - 1) * 24 * 60;
 
       if (rxCount > 0 && restMin < requiredRxMin) {
+        const missingMin = requiredRxMin - restMin;
         if (restCell) restCell.innerHTML = '<span class="badge b-err">' + formatMinToHHMM(restMin) + ' (RX &lt; ' + (requiredRxMin / 60) + 'h)</span>';
         if (rowEl) rowEl.classList.add('row-anomaly');
         restAuditEvents.push({
           level: 'err',
           day: curr.day,
-          title: 'Jours ' + prev.day + '➔' + curr.day + ' — ERREUR RX : ' + formatMinToHHMM(restMin) + ' au lieu de ' + (requiredRxMin / 60) + 'h00',
-          detail: 'L\'intervalle entre J' + prev.day + ' (' + prev.endStr + ') et J' + curr.day + ' (' + curr.startStr + ') ne respecte pas les ' + (requiredRxMin / 60) + 'h00 requises. Il faut remplacer le RX par un Alternement (OO).'
+          title: 'Jours ' + prev.day + '➔' + curr.day + ' — ERREUR RX (' + rxCount + ' RX) : ' + formatMinToHHMM(restMin) + ' au lieu de ' + (requiredRxMin / 60) + 'h00',
+          detail: 'Pour ' + rxCount + ' RX consécutif(s) (38h + ' + (rxCount - 1) + '×24h = ' + (requiredRxMin / 60) + 'h00), il manque ' + formatMinToHHMM(missingMin) + ' entre J' + prev.day + ' (' + prev.endStr + ') et J' + curr.day + ' (' + curr.startStr + '). Un RX doit obligatoirement être remplacé par un Alternement (OO).'
         });
-      } else if (ooCount > 0 && rxCount === 0) {
-        if (restMin < 38 * 60) {
-          if (restCell) restCell.innerHTML = '<span class="badge b-ok">OO (' + formatMinToHHMM(restMin) + ' &lt;38h)</span>';
+      } else if (ooCount > 0) {
+        if (restMin < fullRxEquivalentMin) {
+          if (restCell) restCell.innerHTML = '<span class="badge b-ok">OO' + (rxCount > 0 ? '+' + rxCount + 'RX' : '') + ' (' + formatMinToHHMM(restMin) + ' &lt;' + (fullRxEquivalentMin / 60) + 'h)</span>';
           restAuditEvents.push({
             level: 'ok',
             day: curr.day,
-            title: 'Jours ' + prev.day + '➔' + curr.day + ' — Alternement (OO) valide (' + formatMinToHHMM(restMin) + ')',
-            detail: 'Les 38h00 ne pouvant pas être atteintes (' + formatMinToHHMM(restMin) + '), l\'utilisation de la période blanche (OO) est conforme.'
+            title: 'Jours ' + prev.day + '➔' + curr.day + ' — Alternement (OO) justifié (' + formatMinToHHMM(restMin) + ' < ' + (fullRxEquivalentMin / 60) + 'h00)',
+            detail: 'Les ' + (fullRxEquivalentMin / 60) + 'h00 pour ' + totalRestDaysCount + ' jour(s) RX ne pouvant pas être atteintes (' + formatMinToHHMM(restMin) + '), le remplacement d\'un RX par un Alternement (OO) est conforme.'
           });
         } else {
-          if (restCell) restCell.innerHTML = '<span class="badge b-err">OO invalide (' + formatMinToHHMM(restMin) + ' &ge;38h)</span>';
+          if (restCell) restCell.innerHTML = '<span class="badge b-err">OO invalide (' + formatMinToHHMM(restMin) + ' &ge;' + (fullRxEquivalentMin / 60) + 'h)</span>';
           if (rowEl) rowEl.classList.add('row-anomaly');
           restAuditEvents.push({
             level: 'err',
             day: curr.day,
-            title: 'Jours ' + prev.day + '➔' + curr.day + ' — ANOMALIE Alternement (OO) : Intervalle de ' + formatMinToHHMM(restMin) + ' (>= 38h00)',
-            detail: 'L\'alternement (OO) ne peut être mis que si les 38h ne peuvent pas être respectées. Ici (' + formatMinToHHMM(restMin) + '), un jour de repos RX doit être inscrit.'
+            title: 'Jours ' + prev.day + '➔' + curr.day + ' — ANOMALIE Alternement (OO) : Intervalle de ' + formatMinToHHMM(restMin) + ' (>= ' + (fullRxEquivalentMin / 60) + 'h00)',
+            detail: 'L\'intervalle (' + formatMinToHHMM(restMin) + ') respecte les ' + (fullRxEquivalentMin / 60) + 'h00 requises pour ' + totalRestDaysCount + ' RX : un jour de repos RX doit être inscrit à la place de l\'alternement (OO).'
           });
         }
       } else {
-        if (restCell) restCell.innerHTML = '<span class="badge b-ok">RX ' + formatMinToHHMM(restMin) + '</span>';
+        if (restCell) restCell.innerHTML = '<span class="badge b-ok">RX ' + formatMinToHHMM(restMin) + ' (&ge;' + (requiredRxMin / 60) + 'h)</span>';
       }
       pendingHomeRestDebtMin = 0;
       pendingDebtOriginDay = null;
@@ -1878,11 +1895,11 @@ function recalculateAll() {
   const usedExtralegal = usedCounts.ELH + usedCounts.BELH;
 
   document.getElementById('counterSummaryBox').innerHTML =
-    'Utilisés ce mois : <strong>' + usedCounts.RX + ' RX</strong> (Solde RX : ' + (baseRX - usedCounts.RX) + ') • ' +
+    'Utilisés ce mois : <strong>' + usedCounts.RX + ' RX</strong> (Solde E500 : ' + baseRX + ') • ' +
     '<strong>' + usedCounts.OO + ' OO (Alternements)</strong> • ' +
-    '<strong>' + usedExtralegal + ' ELH/BELH</strong> (Solde BELH : ' + (baseBELH - usedExtralegal) + ') • ' +
-    '<strong>WKD : ' + (baseWKD - usedCounts.WKD) + '</strong> • <strong>REC : ' + baseREC + 'h</strong> • ' +
-    '<strong>ZZ : ' + (baseZZ + usedCounts.ZZ) + '</strong> • <strong>ZB : ' + (baseZB - usedCounts.ZB) + '</strong>';
+    '<strong>' + usedExtralegal + ' ELH/BELH</strong> (Solde E500 : ' + baseBELH + ') • ' +
+    '<strong>WKD : ' + baseWKD + '</strong> • <strong>REC : ' + baseREC + 'h</strong> • ' +
+    '<strong>ZZ : ' + baseZZ + '</strong> • <strong>ZB : ' + baseZB + '</strong>';
 
   const counterRows = [
     { code: 'RX', label: 'Jours de repos périodiques', init: baseRX, used: usedCounts.RX, rem: baseRX - usedCounts.RX },
@@ -1912,7 +1929,7 @@ function recalculateAll() {
   }
 
   document.getElementById('kpiTotalHours').textContent = formatMinToHHMM(totalWorkMin);
-  document.getElementById('kpiServiceCount').textContent = serviceCount + ' prestation(s) BVTS';
+  document.getElementById('kpiServiceCount').textContent = serviceCount + ' prestation(s) active(s)';
   document.getElementById('kpiWeekendHours').textContent = formatMinToHHMM(totalSatMin) + ' / ' + formatMinToHHMM(totalSunMin);
   document.getElementById('kpiOvertimeDayWeek').textContent = formatMinToHHMM(totalDailyOTMin) + ' / ' + formatMinToHHMM(totalWeeklyOTMin);
   document.getElementById('kpiOvertimeQuarter').textContent = formatMinToHHMM(totalQuarterOTMin);
@@ -1951,7 +1968,7 @@ function recalculateAll() {
           '<div style="color:var(--muted); font-size:0.76rem; margin-top:2px;">' + e.detail + '</div>' +
         '</div>'
       ).join('')
-    : '<div class="log-item ok"><strong>Aucun problème d\'intervalle détecté (Repos 14h, Hôtel 9h, RX 38h et Alternements OO respectés).</strong></div>';
+    : '<div class="log-item ok"><strong>Aucun problème d\'intervalle détecté (Repos 14h, Hôtel 9h, RX 38h+24h et Alternements OO respectés).</strong></div>';
 
   const traceListEl = document.getElementById('traceabilityList');
   traceListEl.innerHTML = traceabilityEvents.length
@@ -1988,7 +2005,7 @@ function recalculateAll() {
   };
 }
 
-// 9. Importation intelligente PDF E500 & Image (Zoom 4x Compteurs Droite + Lecture Spécifique 5 Sous-lignes E500)
+// 9. Importation Haute Précision PDF E500 & Image (Détection Viewport PDF + Découpage Ligne Exacte + Zoom 3.5x Compteurs)
 const COUNTER_KEYS_ORDER = ['RX', 'NMBS', 'REC', 'WKD', 'ZZ', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH'];
 
 function getDriverFilterTokens() {
@@ -2007,86 +2024,125 @@ function lineMatchesDriverStrict(lineStr, requiredTokens) {
   return requiredTokens.every(tok => norm.includes(tok));
 }
 
-// Localise la ligne complète du conducteur dans le PDF (du haut "BRASSEUR" jusqu'en bas "Initially planned" / 5e sous-ligne "Totaal")
-function locateDriverAndHeaderOnPdfPage(tcItems, requiredTokens) {
-  const items = tcItems.map(it => ({
-    str: (it.str || '').trim(),
-    norm: normalizeStr(it.str || ''),
-    x: it.transform ? Math.round(it.transform[4]) : 0,
-    y: it.transform ? Math.round(it.transform[5]) : 0
-  })).filter(it => it.str.length > 0);
+// Localise la ligne exacte du conducteur sur une page PDF en coordonnées visuelles (vx, vy) indépendantes de la rotation du PDF
+function locateDriverRowInViewport(page, tcItems, requiredTokens) {
+  const vp1 = page.getViewport({ scale: 1.0 });
+  const vItems = [];
 
-  let anchorY = null;
+  for (let i = 0; i < tcItems.length; i++) {
+    const it = tcItems[i];
+    const rawStr = (it.str || '').trim();
+    if (!rawStr) continue;
+    const pt = vp1.convertToViewportPoint(it.transform[4], it.transform[5]);
+    vItems.push({
+      str: rawStr,
+      norm: normalizeStr(rawStr),
+      vx: pt[0],
+      vy: pt[1]
+    });
+  }
 
-  for (let i = 0; i < items.length; i++) {
-    const center = items[i];
-    const surnameTok = requiredTokens[requiredTokens.length - 1];
-    if (!center.norm.includes(surnameTok) && !center.norm.includes(requiredTokens[0])) continue;
+  if (vItems.length === 0) {
+    return { found: false };
+  }
 
-    const nearbyText = items
-      .filter(other => Math.abs(other.y - center.y) <= 45 && Math.abs(other.x - center.x) <= 260)
-      .map(other => other.norm)
+  // Regroupement en mini-lignes horizontales (tolérance vy de 4px) pour reconstruire les mots coupés dans le PDF
+  const yBuckets = {};
+  vItems.forEach(item => {
+    const bKey = Math.round(item.vy / 4) * 4;
+    if (!yBuckets[bKey]) yBuckets[bKey] = [];
+    yBuckets[bKey].push(item);
+  });
+
+  const visualLines = Object.keys(yBuckets).map(Number).sort((a, b) => a - b).map(bKey => {
+    const row = yBuckets[bKey].sort((a, b) => a.vx - b.vx);
+    let text = '';
+    for (let k = 0; k < row.length; k++) {
+      if (k > 0) {
+        const gap = row[k].vx - row[k - 1].vx;
+        text += (gap < 10 ? '' : ' ');
+      }
+      text += row[k].str;
+    }
+    return {
+      vy: bKey,
+      minVx: row[0].vx,
+      text: text,
+      norm: normalizeStr(text),
+      items: row
+    };
+  });
+
+  // Recherche d'une zone verticale (hauteur ~115px sur la gauche de la page) contenant TOUS les tokens (ex: REMY + BRASSEUR)
+  const leftItems = vItems.filter(it => it.vx < vp1.width * 0.35);
+  let matchedCenterVy = null;
+
+  for (let i = 0; i < visualLines.length; i++) {
+    const bandStartVy = visualLines[i].vy - 10;
+    const bandEndVy = visualLines[i].vy + 105;
+    const bandLeftText = leftItems
+      .filter(it => it.vy >= bandStartVy && it.vy <= bandEndVy)
+      .map(it => it.norm)
       .join(' ');
+    const bandLinesText = visualLines
+      .filter(vl => vl.vy >= bandStartVy && vl.vy <= bandEndVy && vl.minVx < vp1.width * 0.35)
+      .map(vl => vl.norm)
+      .join(' ');
+    const combinedBand = bandLeftText + ' ' + bandLinesText;
 
-    if (requiredTokens.every(tok => nearbyText.includes(tok))) {
-      anchorY = center.y;
+    if (requiredTokens.every(tok => combinedBand.includes(tok))) {
+      matchedCenterVy = visualLines[i].vy;
       break;
     }
   }
 
-  if (anchorY === null) {
-    return { found: false, yTopPdf: null, yBottomPdf: null, structuredCoordText: '' };
+  if (matchedCenterVy === null) {
+    return { found: false };
   }
 
-  // Dans un PDF E500, l'axe Y monte vers le haut.
-  // "BRASSEUR" est vers le haut de la ligne, tandis que "RÉMY", "MARCEL L", "899008349", "Initially planned"
-  // et les 5 sous-lignes de compteurs (Ur. th., Ur. we. [27.2], Versch [27.2], Overdr, Totaal [118, 4, 10, 6.5])
-  // descendent jusqu'à ~95 points SOUS "BRASSEUR".
-  const nameZoneItems = items.filter(it =>
-    it.x < 250 &&
-    it.y <= anchorY + 30 &&
-    it.y >= anchorY - 115 &&
-    (requiredTokens.some(t => it.norm.includes(t)) || /MARCEL|899\d{5}|INITIALLY|PLANNED/i.test(it.norm))
+  // Détermination précise du bord haut (au-dessus de "BRASSEUR" / "Ur. th.") et du bord bas (sous "Initially planned" / 5e ligne "Totaal")
+  const surnameTok = requiredTokens[requiredTokens.length - 1];
+  const driverLeftTokens = leftItems.filter(it =>
+    it.vy >= matchedCenterVy - 35 &&
+    it.vy <= matchedCenterVy + 125 &&
+    (requiredTokens.some(t => it.norm.includes(t)) || /MARCEL|899008349|INITIALLY|PLANNED/i.test(it.norm))
   );
 
-  let yTopPdf = anchorY + 18;
-  let yBottomPdf = anchorY - 90;
-  if (nameZoneItems.length > 0) {
-    const maxY = Math.max.apply(null, nameZoneItems.map(i => i.y));
-    const minY = Math.min.apply(null, nameZoneItems.map(i => i.y));
-    yTopPdf = maxY + 16;
-    yBottomPdf = Math.min(minY - 12, maxY - 85);
+  let vyTop = matchedCenterVy - 24;
+  let vyBottom = matchedCenterVy + 105;
+
+  if (driverLeftTokens.length > 0) {
+    const minVy = Math.min.apply(null, driverLeftTokens.map(it => it.vy));
+    const maxVy = Math.max.apply(null, driverLeftTokens.map(it => it.vy));
+    // Les icônes de lit (découcher) sont légèrement au-dessus de "BRASSEUR", et la 5e sous-ligne de compteurs est au niveau de "Initially planned"
+    vyTop = Math.max(0, minVy - 26);
+    vyBottom = Math.min(vp1.height, Math.max(maxVy + 18, minVy + 96));
   }
 
-  // Tous les éléments appartenant à la bande horizontale complète du conducteur (toutes les 5 sous-lignes incluses)
-  const rowItems = items
-    .filter(it => it.y <= yTopPdf && it.y >= yBottomPdf)
-    .sort((a, b) => (a.x !== b.x ? a.x - b.x : b.y - a.y));
+  // Extraction propre des nombres présents dans le bloc des compteurs à droite (vx > 70% de la largeur) pour vérification croisée
+  const rightCounterItems = vItems
+    .filter(it => it.vy >= vyTop && it.vy <= vyBottom && it.vx >= vp1.width * 0.70)
+    .sort((a, b) => (Math.abs(a.vy - b.vy) > 4 ? a.vy - b.vy : a.vx - b.vx));
 
-  const maxX = items.reduce((acc, it) => Math.max(acc, it.x), 800);
-  const rightCounterItems = rowItems
-    .filter(it => it.x >= maxX * 0.68)
-    .sort((a, b) => (a.x !== b.x ? a.x - b.x : b.y - a.y));
-
-  let coordDump = 'ÉLÉMENTS DU BLOC COMPTEURS À DROITE DANS LE PDF (triés de gauche à droite par X, et de haut en bas par Y) :\n';
-  coordDump += rightCounterItems.map(it => '[X=' + it.x + ', Y=' + it.y + '] "' + it.str + '"').join(' | ') + '\n\n';
-
-  coordDump += 'TOUS LES ÉLÉMENTS DE LA LIGNE DU CONDUCTEUR DANS LE PDF (triés de gauche à droite par X) :\n';
-  coordDump += rowItems.map(it => '[X=' + it.x + ', Y=' + it.y + '] "' + it.str + '"').join(' | ') + '\n';
+  let countersVectorHint = '';
+  if (rightCounterItems.length > 0) {
+    countersVectorHint = 'VALEURS TEXTUELLES DÉTECTÉES DANS LE BLOC COMPTEURS À DROITE DU PDF (de haut en bas et de gauche à droite) :\n' +
+      rightCounterItems.map(it => it.str).join(' | ');
+  }
 
   return {
     found: true,
-    yTopPdf: yTopPdf,
-    yBottomPdf: yBottomPdf,
-    structuredCoordText: coordDump
+    vyTop: vyTop,
+    vyBottom: vyBottom,
+    countersVectorHint: countersVectorHint
   };
 }
 
-// Découpe la ligne complète du conducteur dans le PDF + Crée un Zoom 4x sur le bloc des 11 compteurs à droite
-async function renderPdfPageAndCropForGemini(page, yTopPdf, yBottomPdf) {
+// Transforme la bande exacte du conducteur dans le PDF en image haute résolution + Zoom 3.5x sur les compteurs de droite (identique à l'import Image !)
+async function renderPdfDriverRowAndZoom(page, vyTop, vyBottom) {
   const baseVp = page.getViewport({ scale: 1.0 });
-  const targetWidth = 2600;
-  const scale = Math.min(2.6, Math.max(1.6, targetWidth / (baseVp.width || 1000)));
+  const targetWidth = 2800;
+  const scale = Math.min(3.0, Math.max(1.8, targetWidth / (baseVp.width || 1000)));
   const viewport = page.getViewport({ scale: scale });
 
   const canvas = document.createElement('canvas');
@@ -2097,73 +2153,55 @@ async function renderPdfPageAndCropForGemini(page, yTopPdf, yBottomPdf) {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-  const fullPageB64 = canvas.toDataURL('image/jpeg', 0.88).split(',')[1];
 
-  let rowStripB64 = null;
-  let countersZoomB64 = null;
-
-  if (yTopPdf !== null && yBottomPdf !== null) {
-    // Conversion Y PDF (bas->haut) vers Y Canvas (haut->bas)
-    const yTopCanvas = viewport.height - (yTopPdf * scale);
-    const yBottomCanvas = viewport.height - (yBottomPdf * scale);
-    const sy = Math.max(0, Math.round(Math.min(yTopCanvas, yBottomCanvas) - 12 * scale));
-    const ey = Math.min(canvas.height, Math.round(Math.max(yTopCanvas, yBottomCanvas) + 14 * scale));
-    const sh = ey - sy;
-
-    if (sh > 25) {
-      // 1. Image de la ligne complète du conducteur (identique à la capture d'écran)
-      const rowCanvas = document.createElement('canvas');
-      rowCanvas.width = canvas.width;
-      rowCanvas.height = sh;
-      const rCtx = rowCanvas.getContext('2d');
-      rCtx.fillStyle = '#ffffff';
-      rCtx.fillRect(0, 0, rowCanvas.width, rowCanvas.height);
-      rCtx.drawImage(canvas, 0, sy, canvas.width, sh, 0, 0, canvas.width, sh);
-      rowStripB64 = rowCanvas.toDataURL('image/jpeg', 0.92).split(',')[1];
-
-      // 2. Zoom 3.5x haute netteté sur le bloc des compteurs situé tout à droite (les derniers 28% de la largeur)
-      const cxStart = Math.max(0, Math.round(rowCanvas.width * 0.72));
-      const cw = rowCanvas.width - cxStart;
-      const zoomFactor = 3.0;
-      const zoomCanvas = document.createElement('canvas');
-      zoomCanvas.width = Math.round(cw * zoomFactor);
-      zoomCanvas.height = Math.round(sh * zoomFactor);
-      const zCtx = zoomCanvas.getContext('2d');
-      zCtx.fillStyle = '#ffffff';
-      zCtx.fillRect(0, 0, zoomCanvas.width, zoomCanvas.height);
-      zCtx.imageSmoothingEnabled = true;
-      zCtx.imageSmoothingQuality = 'high';
-      zCtx.drawImage(rowCanvas, cxStart, 0, cw, sh, 0, 0, zoomCanvas.width, zoomCanvas.height);
-      countersZoomB64 = zoomCanvas.toDataURL('image/jpeg', 0.95).split(',')[1];
-    }
+  if (vyTop === null || vyBottom === null || vyTop === undefined || vyBottom === undefined) {
+    const fullPageB64 = canvas.toDataURL('image/jpeg', 0.90).split(',')[1];
+    return {
+      base64Data: fullPageB64,
+      countersZoomB64: null,
+      mimeType: 'image/jpeg'
+    };
   }
+
+  const sy = Math.max(0, Math.round(vyTop * scale));
+  const ey = Math.min(canvas.height, Math.round(vyBottom * scale));
+  const sh = Math.max(40, ey - sy);
+
+  // 1. Découpage de la ligne complète du conducteur (exactement comme la capture d'écran image_d6ae06.png)
+  const rowCanvas = document.createElement('canvas');
+  rowCanvas.width = canvas.width;
+  rowCanvas.height = sh;
+  const rCtx = rowCanvas.getContext('2d');
+  rCtx.fillStyle = '#ffffff';
+  rCtx.fillRect(0, 0, rowCanvas.width, rowCanvas.height);
+  rCtx.imageSmoothingEnabled = true;
+  rCtx.imageSmoothingQuality = 'high';
+  rCtx.drawImage(canvas, 0, sy, canvas.width, sh, 0, 0, rowCanvas.width, rowCanvas.height);
+  const rowStripB64 = rowCanvas.toDataURL('image/jpeg', 0.93).split(',')[1];
+
+  // 2. Zoom 3.5x haute netteté sur les 28% de droite (Ur.th..Totaal + les 11 colonnes RX..BTULH)
+  const sxRight = Math.max(0, Math.round(rowCanvas.width * 0.72));
+  const swRight = rowCanvas.width - sxRight;
+  const zScale = 3.2;
+  const zCanvas = document.createElement('canvas');
+  zCanvas.width = Math.round(swRight * zScale);
+  zCanvas.height = Math.round(sh * zScale);
+  const zCtx = zCanvas.getContext('2d');
+  zCtx.fillStyle = '#ffffff';
+  zCtx.fillRect(0, 0, zCanvas.width, zCanvas.height);
+  zCtx.imageSmoothingEnabled = true;
+  zCtx.imageSmoothingQuality = 'high';
+  zCtx.drawImage(rowCanvas, sxRight, 0, swRight, sh, 0, 0, zCanvas.width, zCanvas.height);
+  const countersZoomB64 = zCanvas.toDataURL('image/jpeg', 0.95).split(',')[1];
+
   return {
-    fullPageB64: fullPageB64,
-    rowStripB64: rowStripB64,
-    countersZoomB64: countersZoomB64
+    base64Data: rowStripB64,
+    countersZoomB64: countersZoomB64,
+    mimeType: 'image/jpeg'
   };
 }
 
-function extractDriverSectionFromPdfPages(pagesLines, requiredTokens) {
-  const matchedBlocks = [];
-  for (let p = 0; p < pagesLines.length; p++) {
-    const lines = pagesLines[p];
-    const headerLines = lines.slice(0, Math.min(15, lines.length));
-    for (let i = 0; i < lines.length; i++) {
-      const window4 = [lines[i - 1] || '', lines[i] || '', lines[i + 1] || '', lines[i + 2] || ''].join(' ');
-      if (lineMatchesDriverStrict(window4, requiredTokens)) {
-        const start = Math.max(0, i - 6);
-        const end = Math.min(lines.length, i + 45);
-        const excerpt = lines.slice(start, end).join('\n');
-        matchedBlocks.push('=== PAGE ' + (p + 1) + ' ===\n' + headerLines.join('\n') + '\n=== LIGNE CONDUCTEUR CIBLE ===\n' + excerpt);
-        i += 18;
-      }
-    }
-  }
-  return matchedBlocks.join('\n\n');
-}
-
-// Prépare l'image importée + génère automatiquement un Zoom 4x sur le tableau des compteurs à droite !
+// Prépare l'image importée + génère automatiquement un Zoom 3.5x sur le tableau des compteurs à droite
 function compressImageFileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -2176,7 +2214,6 @@ function compressImageFileToBase64(file) {
           const maxDim = 2800;
           let w = img.width || 1600;
           let h = img.height || 400;
-          // Si l'image est petite (ex: 1146x144), on l'agrandit x2 pour améliorer la lecture OCR
           if (w < 1600) {
             w = w * 2;
             h = h * 2;
@@ -2198,9 +2235,8 @@ function compressImageFileToBase64(file) {
           ctx.imageSmoothingEnabled = true;
           ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(img, 0, 0, w, h);
-          const jpegUrl = canvas.toDataURL('image/jpeg', 0.92);
+          const jpegUrl = canvas.toDataURL('image/jpeg', 0.93);
 
-          // Création automatique d'un Zoom 3.5x sur la partie droite (les 28% à droite où se trouvent Ur.th..Totaal et RX..BTULH)
           let countersZoomB64 = null;
           if (img.width > img.height * 2.2) {
             const sx = Math.max(0, Math.round(img.width * 0.72));
@@ -2420,9 +2456,9 @@ function getE500StrictRulesPrompt(targetName, firstNameToken) {
     '- Col 11 (BTULH) : prends le nombre de la 5e ligne tout en bas (ex: 0).\n\n' +
     'RÈGLE SUR LES 31 COLONNES DE JOURS DU MOIS (SITUÉES AU MILIEU, ENTRE LE NOM À GAUCHE ET "Ur. th." À DROITE) :\n' +
     '- Compte scrupuleusement chaque colonne de jour de 1 à 31 de gauche à droite :\n' +
-    '  * Si la case contient un code de prestation avec heures (ex: "BVTS", "SIM", "CTFT", "CTFP" avec "8:00" et "15:36"), indique ce code exact ("BVTS", "SIM", "CTFT" ou "CTFP"), "start":"08:00", "end":"15:36".\n' +
-    '  * Si la case contient un symbole de lit / découcher hôtel, mets "lit":"aller" sur le 1er jour et "lit":"retour" sur le lendemain.\n' +
-    '  * Si la case contient un code de repos ou congé sans heure ("RX", "OO" ou "00", "ELH", "REC", "WKD", "ZZ", "ZB", "BLH", "BELH", "BTH", "BTULH", "NMBS"), indique ce code ("00" -> "OO").\n' +
+    '  * Si la case contient un code de prestation avec heures (ex: "BVTS", "SIM", "CTFT", "CTFP" avec heure de début en haut comme "8:00" et heure de fin en bas comme "15:36"), indique OBLIGATOIREMENT "code" ("BVTS", "SIM", "CTFT" ou "CTFP"), "start":"08:00" et "end":"15:36". Ne laisse JAMAIS "start" ou "end" vides sur une prestation active !\n' +
+    '  * Si la case contient un symbole de lit / découcher hôtel en haut de la colonne, mets "lit":"aller" sur le 1er jour et "lit":"retour" sur le lendemain.\n' +
+    '  * Si la case contient un code de repos ou congé sans heure ("RX", "OO" ou "00", "ELH", "REC", "WKD", "ZZ", "ZB", "BLH", "BELH", "BTH", "BTULH", "NMBS"), indique ce code ("00" -> "OO") avec "start":"" et "end":"".\n' +
     '  * Si la 31e colonne contient uniquement "-" (mois de 30 jours), mets "code":"-" pour le jour 31.\n\n' +
     'Renvoie UNIQUEMENT un objet JSON valide respectant strictement cette structure :\n' +
     '{\n' +
@@ -2443,8 +2479,9 @@ function sanitizeCounterNumber(val) {
 
 function formatTimePad(tStr) {
   if (!tStr) return '';
-  const m = String(tStr).trim().replace(/[hH.]/, ':').match(/^(\d{1,2}):(\d{2})$/);
-  if (!m) return String(tStr).trim();
+  const cleaned = String(tStr).trim().replace(/\s+/g, '').replace(/[hH.]/, ':');
+  const m = cleaned.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return cleaned;
   return String(parseInt(m[1], 10)).padStart(2, '0') + ':' + m[2];
 }
 
@@ -2477,7 +2514,6 @@ function applyExtractedJsonToSchedule(data, requiredTokens) {
   }
 
   // Sécurité spécifique pour REC : si l'IA a lu les 5 sous-lignes de la colonne REC (ex: [0, 27.2, 27.2, 0, 0])
-  // et qu'une valeur non nulle existe aux lignes 2 ou 3 alors que counters.REC vaut 0, on applique la valeur non nulle (27.2) !
   if (Array.isArray(obj.recColumn5Rows) && obj.recColumn5Rows.length > 0) {
     const nonZeroRec = obj.recColumn5Rows
       .map(v => sanitizeCounterNumber(v))
@@ -2496,10 +2532,17 @@ function applyExtractedJsonToSchedule(data, requiredTokens) {
   }
 
   if (Array.isArray(daysList) && daysList.length > 0) {
-    // Si le jour 31 est vide ("-") sur la grille importée et que le mois sélectionné a 31 jours (ou inversement), on peuple proprement les jours
-    const m = parseInt(document.getElementById('monthSelect').value, 10);
+    let m = parseInt(document.getElementById('monthSelect').value, 10);
     const y = parseInt(document.getElementById('yearInput').value, 10);
+
+    // Si le document importé comporte un Jour 31 actif (non '-') alors que le mois sélectionné n'a que 30 jours, on ajuste la grille
+    const day31Item = daysList.find(it => parseInt(it.day !== undefined ? it.day : it.jour, 10) === 31);
+    const hasActiveDay31 = day31Item && day31Item.code && String(day31Item.code).trim() !== '-';
+
     scheduleData = createBlankSchedule(m, y);
+    if (hasActiveDay31 && scheduleData.length === 30) {
+      scheduleData.push({ day: 31, code: '-', start: '', end: '', lit: 'none', start2: '', end2: '', trajetMin: 0, note: '' });
+    }
 
     daysList.forEach(item => {
       const d = parseInt(item.day !== undefined ? item.day : item.jour, 10);
@@ -2507,9 +2550,22 @@ function applyExtractedJsonToSchedule(data, requiredTokens) {
       if (row) {
         let rawCode = String(item.code || '').toUpperCase().trim();
         if (rawCode === '00') rawCode = 'OO';
-        row.code = CODES.includes(rawCode) ? rawCode : (item.start ? 'BVTS' : '-');
-        row.start = formatTimePad(item.start || '');
-        row.end = formatTimePad(item.end || '');
+
+        let sStr = item.start || item.debut || item.startTime || '';
+        let eStr = item.end || item.fin || item.endTime || '';
+
+        // Si l'IA a groupé "08:00-15:36" dans start ou dans code
+        if (sStr && !eStr && /[-/àa\s]/.test(sStr)) {
+          const mTwo = String(sStr).match(/(\d{1,2}[:hH.]\d{2})\s*[-/àa\s]+\s*(\d{1,2}[:hH.]\d{2})/);
+          if (mTwo) {
+            sStr = mTwo[1];
+            eStr = mTwo[2];
+          }
+        }
+
+        row.start = formatTimePad(sStr);
+        row.end = formatTimePad(eStr);
+        row.code = CODES.includes(rawCode) ? rawCode : ((row.start && row.end) ? 'BVTS' : '-');
         row.lit = ['none', 'aller', 'retour', '2'].includes(item.lit) ? item.lit : 'none';
         row.trajetMin = parseInt(item.trajetMin || 0, 10) || 0;
         row.note = item.note || '';
@@ -2523,33 +2579,15 @@ function applyExtractedJsonToSchedule(data, requiredTokens) {
   return false;
 }
 
-async function parseScheduleWithGeminiPdfVision(rendered, extractedText, coordText, apiKey, requiredTokens) {
+// Utilise exactement le même pipeline visuel haute précision pour l'Image ET pour la ligne découpée du PDF !
+async function parseScheduleWithGeminiVisionUnified(imgObj, vectorHint, apiKey, requiredTokens) {
   const targetName = requiredTokens.join(' ');
-  const prompt = getE500StrictRulesPrompt(targetName, requiredTokens[0]) +
-    '\n\nTEXTES ET COORDONNÉES EXACTS EXTRAITS DU PDF (POUR VÉRIFICATION CROISÉE AVEC LES IMAGES) :\n' +
-    (coordText ? (coordText + '\n') : '') +
-    (extractedText || '').slice(0, 8000);
+  let prompt = getE500StrictRulesPrompt(targetName, requiredTokens[0]) +
+    '\n\nTu reçois ci-joint l\'image complète de la ligne du conducteur AINSI qu\'un zoom agrandi 3.5x sur le bloc des 11 compteurs situé tout à droite afin de lire parfaitement les petits chiffres décimaux (comme 27.2 dans les sous-lignes 2 et 3 de la colonne REC) et toutes les heures des prestations.';
 
-  const parts = [{ text: prompt }];
-  // Image 1 : La ligne complète du conducteur
-  if (rendered.rowStripB64) {
-    parts.push({ inline_data: { mime_type: 'image/jpeg', data: rendered.rowStripB64 } });
-  } else if (rendered.fullPageB64) {
-    parts.push({ inline_data: { mime_type: 'image/jpeg', data: rendered.fullPageB64 } });
+  if (vectorHint) {
+    prompt += '\n\n' + vectorHint;
   }
-  // Image 2 : Le Zoom 3.5x haute netteté sur le bloc des 11 compteurs à droite (pour lire le petit "27.2" dans REC sans erreur)
-  if (rendered.countersZoomB64) {
-    parts.push({ inline_data: { mime_type: 'image/jpeg', data: rendered.countersZoomB64 } });
-  }
-
-  const parsed = await callGeminiWithFallback(parts, apiKey);
-  return applyExtractedJsonToSchedule(parsed, requiredTokens);
-}
-
-async function parseScheduleWithGeminiImage(imgObj, apiKey, requiredTokens) {
-  const targetName = requiredTokens.join(' ');
-  const prompt = getE500StrictRulesPrompt(targetName, requiredTokens[0]) +
-    '\n\nTu reçois ci-joint l\'image complète de la ligne du conducteur AINSI qu\'un zoom agrandi 3.5x sur le bloc des 11 compteurs situé tout à droite afin de lire parfaitement les petits chiffres décimaux (comme 27.2 dans les sous-lignes 2 et 3 de la colonne REC).';
 
   const parts = [
     { text: prompt },
@@ -2584,80 +2622,50 @@ async function handleScheduleFileImport(event) {
       }
       const ab = await file.arrayBuffer();
       const pdf = await window.pdfjsLib.getDocument({ data: ab }).promise;
-      const pagesLines = [];
-      let fullText = '';
+
       let matchedPageObj = null;
-      let matchedYTop = null;
-      let matchedYBottom = null;
-      let matchedCoordText = '';
+      let matchedVyTop = null;
+      let matchedVyBottom = null;
+      let matchedVectorHint = '';
 
       for (let i = 1; i <= pdf.numPages; i++) {
+        statusEl.textContent = '⏳ Recherche de la ligne "' + targetLabel + '" (page ' + i + '/' + pdf.numPages + ')...';
         const page = await pdf.getPage(i);
         const tc = await page.getTextContent();
 
-        const loc = locateDriverAndHeaderOnPdfPage(tc.items, requiredTokens);
-        if (loc.found && !matchedPageObj) {
+        const loc = locateDriverRowInViewport(page, tc.items, requiredTokens);
+        if (loc.found) {
           matchedPageObj = page;
-          matchedYTop = loc.yTopPdf;
-          matchedYBottom = loc.yBottomPdf;
-          matchedCoordText = loc.structuredCoordText;
-        }
-
-        const pageMap = {};
-        tc.items.forEach(it => {
-          const yKey = Math.round(it.transform[5] / 3) * 3;
-          if (!pageMap[yKey]) pageMap[yKey] = [];
-          pageMap[yKey].push({ x: it.transform[4], str: it.str });
-        });
-        const sortedY = Object.keys(pageMap).map(Number).sort((a, b) => b - a);
-        const linesOfPage = sortedY.map(y =>
-          pageMap[y].sort((a, b) => a.x - b.x).map(i => i.str).join(' ')
-        );
-        pagesLines.push(linesOfPage);
-        fullText += linesOfPage.join('\n') + '\n';
-      }
-
-      const filteredText = extractDriverSectionFromPdfPages(pagesLines, requiredTokens);
-
-      if (apiKey) {
-        const pageToRender = matchedPageObj || (await pdf.getPage(1));
-        statusEl.textContent = '⏳ Découpage de la ligne + Zoom 4x sur les compteurs pour ' + targetLabel + '...';
-        try {
-          const rendered = await renderPdfPageAndCropForGemini(pageToRender, matchedYTop, matchedYBottom);
-          const textForAi = filteredText ? filteredText : fullText.slice(0, 15000);
-          const parsedByAi = await parseScheduleWithGeminiPdfVision(
-            rendered, textForAi, matchedCoordText, apiKey, requiredTokens
-          );
-          if (parsedByAi) {
-            statusEl.style.color = 'var(--green)';
-            statusEl.textContent = '✓ PDF E500 importé avec succès (Planning + Compteurs REC/WKD...) !';
-            saveStateToLocal(true);
-            switchTab(4);
-            event.target.value = '';
-            return;
-          } else {
-            statusEl.style.color = 'var(--red)';
-            statusEl.textContent = '❌ Aucune prestation trouvée pour "' + targetLabel + '".';
-            event.target.value = '';
-            return;
-          }
-        } catch (aiErr) {
-          statusEl.style.color = 'var(--red)';
-          statusEl.textContent = '❌ Erreur IA Gemini sur le PDF : ' + (aiErr.message || String(aiErr));
-          event.target.value = '';
-          return;
+          matchedVyTop = loc.vyTop;
+          matchedVyBottom = loc.vyBottom;
+          matchedVectorHint = loc.countersVectorHint || '';
+          // Arrêt immédiat dès que la ligne de Rémy Brasseur est trouvée !
+          break;
         }
       }
 
-      const count = parseLocalScheduleText(filteredText || fullText, requiredTokens);
-      if (count > 0) {
+      if (!apiKey) {
+        statusEl.style.color = 'var(--orange)';
+        statusEl.textContent = '⚠️ Clé API Gemini absente : colle ta clé dans le bloc 2 à droite pour décoder le tableau PDF.';
+        event.target.value = '';
+        return;
+      }
+
+      const pageToRender = matchedPageObj || (await pdf.getPage(1));
+      statusEl.textContent = '⏳ Découpage haute définition de la ligne "' + targetLabel + '" + Zoom 3.5x Compteurs...';
+
+      const imgObj = await renderPdfDriverRowAndZoom(pageToRender, matchedVyTop, matchedVyBottom);
+      statusEl.textContent = '⏳ Lecture Vision IA (Horaires + Compteurs REC/WKD...) en cours...';
+
+      const parsedByAi = await parseScheduleWithGeminiVisionUnified(imgObj, matchedVectorHint, apiKey, requiredTokens);
+      if (parsedByAi) {
         statusEl.style.color = 'var(--green)';
-        statusEl.textContent = '✓ PDF lu (' + count + ' jour(s) détecté(s) pour ' + targetLabel + ') !';
+        statusEl.textContent = '✓ PDF E500 importé avec succès pour ' + targetLabel + ' !';
         saveStateToLocal(true);
         switchTab(4);
       } else {
-        statusEl.style.color = 'var(--orange)';
-        statusEl.textContent = '⚠️ Clé API Gemini absente : colle ta clé dans le bloc 2 à droite pour décoder le tableau PDF.';
+        statusEl.style.color = 'var(--red)';
+        statusEl.textContent = '❌ Aucune prestation trouvée pour "' + targetLabel + '".';
       }
     } catch (err) {
       statusEl.style.color = 'var(--red)';
@@ -2672,9 +2680,9 @@ async function handleScheduleFileImport(event) {
       return;
     }
     try {
-      statusEl.textContent = '⏳ Lecture haute définition + Zoom 4x sur les compteurs (' + targetLabel + ')...';
+      statusEl.textContent = '⏳ Lecture haute définition + Zoom 3.5x Compteurs (' + targetLabel + ')...';
       const imgObj = await compressImageFileToBase64(file);
-      const ok = await parseScheduleWithGeminiImage(imgObj, apiKey, requiredTokens);
+      const ok = await parseScheduleWithGeminiVisionUnified(imgObj, '', apiKey, requiredTokens);
       if (ok) {
         statusEl.style.color = 'var(--green)';
         statusEl.textContent = '✓ Image importée avec succès (Planning + Compteurs REC/WKD...) !';
@@ -2690,41 +2698,6 @@ async function handleScheduleFileImport(event) {
     }
     event.target.value = '';
   }
-}
-
-function parseLocalScheduleText(text, requiredTokens) {
-  if (!text) return 0;
-  if (lineMatchesDriverStrict(text, ['REMY', 'BRASSEUR'])) {
-    document.getElementById('e500FullName').value = 'Rémy Marcel L BRASSEUR';
-    checkDriverMatch();
-  }
-  const matMatch = text.match(/\b(899\d{6})\b/);
-  if (matMatch) {
-    document.getElementById('driverMatricule').value = matMatch[1];
-  }
-  let updatedCount = 0;
-  const lines = text.split(/\n+/);
-  lines.forEach(line => {
-    const m = line.match(/\b([1-9]|[12]\d|3[01])\b\s+(BVTS|SIM|CTFT|CTFP|RX|OO|ELH|REC|WKD|ZZ|ZB|BLH|BELH|BTH|BTULH|NMBS)\b(?:\s+(\d{1,2}[:hH.]\d{2})\s*[-àa]?\s*(\d{1,2}[:hH.]\d{2}))?/i);
-    if (m) {
-      const d = parseInt(m[1], 10);
-      const code = m[2].toUpperCase();
-      const row = scheduleData.find(r => r.day === d);
-      if (row) {
-        row.code = code;
-        if (m[3] && m[4]) {
-          row.start = formatTimePad(m[3]);
-          row.end = formatTimePad(m[4]);
-        }
-        updatedCount++;
-      }
-    }
-  });
-  if (updatedCount > 0) {
-    renderTable();
-    recalculateAll();
-  }
-  return updatedCount;
 }
 
 // 10. Construction du document PDF + Boutons Cloud & PDF du bandeau supérieur
