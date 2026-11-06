@@ -641,42 +641,43 @@
           </div>
         </div>
 
-        <!-- Boutons distincts d'importation PDF et Image -->
+        <!-- Bouton unique d'importation PDF E500 (Lecture mathématique 100 % fiable) -->
         <div class="import-box">
           <label style="font-size:0.78rem; color:var(--accent); font-weight:700; display:block;">
-            📥 Importer mes horaires (PDF E500 ou Image de ma ligne) :
+            📥 Importer mes horaires (Fichier PDF E500 — Lecture mathématique 100 % exacte) :
           </label>
-          <div class="import-btns">
-            <label class="file-btn-label btn-amber">
-              📄 Importer un PDF
+          <div class="import-btns" style="grid-template-columns: 1fr;">
+            <label class="file-btn-label btn-amber full-width" style="padding:10px 14px; font-size:0.88rem;">
+              📄 Importer un PDF E500
               <input type="file" id="pdfFileInput" accept="application/pdf,.pdf" onchange="handleScheduleFileImport(event)" style="display:none;">
-            </label>
-            <label class="file-btn-label btn-outline">
-              🖼️ Importer une Image
-              <input type="file" id="imgFileInput" accept="image/*" onchange="handleScheduleFileImport(event)" style="display:none;">
             </label>
           </div>
           <div id="importStatusMsg" style="font-size:0.74rem; color:var(--muted); margin-top:8px;">
-            Sélectionne un fichier PDF E500 ou une image de ta ligne.
+            Sélectionne ton fichier PDF E500 (détection automatique du conducteur, des 31 jours, des lits et des 10 compteurs).
           </div>
         </div>
       </div>
 
-      <!-- Bloc 2 : Options Mail, Cloud (Google Drive) & Clé IA -->
+      <!-- Bloc 2 : Écosystème Ouvert (Tous Clouds, Mail & Toutes IA au choix) -->
       <div class="card">
-        <h2>2. Options Cloud, Mail &amp; Clé IA Gemini</h2>
+        <h2>2. Options Cloud, Mail &amp; IA (Ouvert à tous les écosystèmes)</h2>
         <p class="card-desc">
-          Le bouton bleu <strong>Cloud</strong> en haut ouvre le partage natif de ton téléphone (Google Drive, Gmail, WhatsApp) avec le PDF attaché. Le bouton orange <strong>PDF</strong> l'enregistre directement.
+          Choisis ton service Cloud (Google Drive, OneDrive, iCloud, Dropbox...) et ton assistant IA préféré (ou le mode 100 % autonome sans IA).
         </p>
         <div class="form-row">
           <div class="field">
-            <label>Adresse e-mail destinataire (enregistrée dans tes options)</label>
-            <input type="email" id="userEmailInput" value="" placeholder="Ex: mon.adresse@gmail.com" oninput="saveUserSettings()">
+            <label>Service Cloud préféré</label>
+            <select id="cloudProviderSelect" onchange="saveUserSettings()">
+              <option value="universal">☁️ Partage Universel (Tous Clouds / Fichiers)</option>
+              <option value="onedrive">🟦 Microsoft OneDrive</option>
+              <option value="icloud">🍏 Apple iCloud Drive</option>
+              <option value="dropbox">📦 Dropbox</option>
+              <option value="gdrive">📁 Google Drive</option>
+              <option value="nextcloud">🛡️ Nextcloud / Proton Drive / kDrive</option>
+            </select>
           </div>
-        </div>
-        <div class="form-row">
           <div class="field">
-            <label>Dossier Cloud cible automatique (Google Drive)</label>
+            <label>Dossier Cloud cible automatique</label>
             <div id="cloudPathPreview" style="background:#0b1120; border:1px solid var(--border); padding:8px 10px; border-radius:6px; font-size:0.83rem; color:var(--accent); font-weight:700;">
               Travail / 2026 / 11 - Novembre
             </div>
@@ -684,17 +685,42 @@
         </div>
         <div class="form-row">
           <div class="field">
-            <label>Clé API Gemini (Optionnel — pour lire les images ou PDF complexes)</label>
-            <input type="password" id="geminiApiKeyInput" value="" placeholder="Colle ta clé API Gemini ici..." oninput="saveUserSettings()">
+            <label>Adresse e-mail destinataire (tous fournisseurs : Outlook, Gmail, iCloud...)</label>
+            <input type="email" id="userEmailInput" value="" placeholder="Ex: prenom.nom@domaine.be" oninput="saveUserSettings()">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label>Assistant IA préféré (Optionnel — la lecture PDF E500 est 100 % autonome)</label>
+            <select id="aiProviderSelect" onchange="updateAiProviderUI(); saveUserSettings();">
+              <option value="none">⚡ Aucune IA — Lecture PDF Mathématique 100 % autonome</option>
+              <option value="openai">🤖 OpenAI (ChatGPT / GPT-4o)</option>
+              <option value="claude">🧠 Anthropic (Claude 3.5)</option>
+              <option value="mistral">🇫🇷 Mistral AI (Le Chat / Pixtral)</option>
+              <option value="gemini">✨ Google Gemini</option>
+              <option value="groq">🚀 Groq (Llama 3.3)</option>
+            </select>
+          </div>
+          <div class="field" id="aiApiKeyFieldWrap">
+            <label id="aiApiKeyLabel">Clé API IA (Optionnel)</label>
+            <input type="password" id="geminiApiKeyInput" value="" placeholder="Optionnel : colle ta clé API ici..." oninput="saveUserSettings()">
           </div>
         </div>
 
         <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
           <button type="button" class="btn-green full-width" onclick="sharePDFNativeCloudOrMail()">
-            ☁️ Partager PDF vers Cloud (Drive) / Mail / WhatsApp
+            ☁️ Envoyer le PDF vers mon Cloud / Fichiers / WhatsApp
           </button>
-          <button type="button" class="btn-outline full-width" onclick="sendPDFBySavedEmail()">
-            ✉️ Envoyer par Mail à l'adresse enregistrée
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:8px;">
+            <button type="button" class="btn-outline full-width" onclick="openSelectedCloudWeb()">
+              🌐 Ouvrir mon Cloud Web
+            </button>
+            <button type="button" class="btn-outline full-width" onclick="sendPDFBySavedEmail()">
+              ✉️ Envoyer par Mail
+            </button>
+          </div>
+          <button type="button" class="btn-outline full-width" style="border-color:rgba(245,158,11,0.45); color:var(--accent);" onclick="copyAuditPromptForAnyAI()">
+            🤖 Copier le résumé pour mon IA (ChatGPT, Claude, Copilot, Le Chat...)
           </button>
         </div>
       </div>
@@ -913,19 +939,22 @@
   </div>
 </div>
 
-<!-- Fenêtre modale Export PDF (Cloud Drive / Mail / Téléphone) -->
+<!-- Fenêtre modale Export PDF (Multi-Cloud / Mail / Téléphone) -->
 <div id="exportModal" class="modal-overlay" onclick="if(event.target===this)closeExportModal()">
-  <div class="card" style="max-width:380px;">
-    <h2>☁️ Envoi Cloud / Mail</h2>
+  <div class="card" style="max-width:400px;">
+    <h2>☁️ Envoi Cloud / Mail (Tous Écosystèmes)</h2>
     <p class="card-desc">
-      Choisis comment envoyer ou enregistrer ton rapport PDF :
+      Le chemin du dossier a été copié dans ton presse-papiers. Choisis comment enregistrer ou transférer ton PDF :
     </p>
     <div style="background:#0b1120; border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:12px; font-size:0.78rem;">
-      <div style="color:var(--muted);">Dossier Cloud recommandé :</div>
+      <div id="modalCloudProviderName" style="color:var(--muted);">Dossier Cloud cible (copié) :</div>
       <div id="modalCloudPath" style="color:var(--accent); font-weight:700; margin-top:2px;">Travail / 2026 / 11 - Novembre</div>
     </div>
     <div style="display:flex; flex-direction:column; gap:8px;">
-      <button type="button" class="btn-green full-width" onclick="sendPDFBySavedEmail()">
+      <button type="button" class="btn-green full-width" onclick="openSelectedCloudWeb()">
+        🌐 Télécharger le PDF &amp; Ouvrir mon Cloud
+      </button>
+      <button type="button" class="btn-outline full-width" onclick="sendPDFBySavedEmail()">
         ✉️ Envoyer par Mail (adresse enregistrée)
       </button>
       <button type="button" class="btn-outline full-width" onclick="downloadPDFDirect()">
@@ -971,7 +1000,7 @@ let currentScheduleFilter = 'all';
 const STORAGE_KEY = 'rb_railvigie_state_v6';
 const SETTINGS_KEY = 'rb_railvigie_settings_v6';
 const DAY_NAMES = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-const CODES = ['BVTS', 'SIM', 'CTFT', 'CTFP', 'RX', 'OO', 'ELH', 'REC', 'WKD', 'ZZ', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH', 'NMBS', '-'];
+const CODES = ['BVTS', 'SIM', 'CTFT', 'CTFP', 'LST', 'BMA', 'LAN', 'RX', 'OO', 'ELH', 'REC', 'WKD', 'ZZ', 'MAL', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH', 'NMBS', '-'];
 const MONTH_FOLDERS = {
   1: '01 - Janvier',
   2: '02 - Févier',
@@ -1033,7 +1062,7 @@ function applyRowFilter() {
     if (!tr) return;
     const isAnom = tr.classList.contains('row-anomaly');
     let show = true;
-    if (currentScheduleFilter === 'bvts') show = ['BVTS', 'SIM', 'CTFT', 'CTFP'].includes(r.code);
+    if (currentScheduleFilter === 'bvts') show = ['BVTS', 'SIM', 'CTFT', 'CTFP', 'LST', 'BMA', 'LAN'].includes(r.code);
     else if (currentScheduleFilter === 'rxoo') show = (r.code === 'RX' || r.code === 'OO');
     else if (currentScheduleFilter === 'anom') show = isAnom;
     tr.classList.toggle('hidden-row', !show);
@@ -1120,10 +1149,43 @@ function loadStateFromLocal() {
   }
 }
 
+const CLOUD_PROVIDERS = {
+  universal: { name: 'Partage Universel (Tous Clouds)', url: '' },
+  onedrive:  { name: 'Microsoft OneDrive', url: 'https://onedrive.live.com/' },
+  icloud:    { name: 'Apple iCloud Drive', url: 'https://www.icloud.com/iclouddrive/' },
+  dropbox:   { name: 'Dropbox', url: 'https://www.dropbox.com/home' },
+  gdrive:    { name: 'Google Drive', url: 'https://drive.google.com/drive/my-drive' },
+  nextcloud: { name: 'Nextcloud / Proton Drive / kDrive', url: 'https://drive.proton.me/' }
+};
+
+const AI_PROVIDERS_META = {
+  none:    { label: 'Mode Sans IA (100 % autonome)', placeholder: 'Aucune clé requise pour lire le PDF E500' },
+  openai:  { label: 'Clé API OpenAI (ChatGPT)', placeholder: 'Ex: sk-proj-...' },
+  claude:  { label: 'Clé API Anthropic (Claude)', placeholder: 'Ex: sk-ant-...' },
+  mistral: { label: 'Clé API Mistral AI (Le Chat)', placeholder: 'Colle ta clé API Mistral...' },
+  gemini:  { label: 'Clé API Google Gemini', placeholder: 'Ex: AIzaSy...' },
+  groq:    { label: 'Clé API Groq', placeholder: 'Ex: gsk_...' }
+};
+
+function updateAiProviderUI() {
+  const sel = document.getElementById('aiProviderSelect');
+  const wrap = document.getElementById('aiApiKeyFieldWrap');
+  const lbl = document.getElementById('aiApiKeyLabel');
+  const inp = document.getElementById('geminiApiKeyInput');
+  if (!sel || !wrap || !lbl || !inp) return;
+  const prov = sel.value || 'none';
+  const meta = AI_PROVIDERS_META[prov] || AI_PROVIDERS_META.none;
+  lbl.textContent = meta.label;
+  inp.placeholder = meta.placeholder;
+  wrap.style.opacity = prov === 'none' ? '0.55' : '1';
+}
+
 function saveUserSettings() {
   try {
     const settings = {
       email: (document.getElementById('userEmailInput').value || '').trim(),
+      cloudProvider: document.getElementById('cloudProviderSelect') ? document.getElementById('cloudProviderSelect').value : 'universal',
+      aiProvider: document.getElementById('aiProviderSelect') ? document.getElementById('aiProviderSelect').value : 'none',
       geminiKey: (document.getElementById('geminiApiKeyInput').value || '').trim()
     };
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
@@ -1134,10 +1196,16 @@ function saveUserSettings() {
 function loadUserSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return;
+    if (!raw) {
+      updateAiProviderUI();
+      return;
+    }
     const s = JSON.parse(raw);
     if (s.email && document.getElementById('userEmailInput')) document.getElementById('userEmailInput').value = s.email;
+    if (s.cloudProvider && document.getElementById('cloudProviderSelect')) document.getElementById('cloudProviderSelect').value = s.cloudProvider;
+    if (s.aiProvider && document.getElementById('aiProviderSelect')) document.getElementById('aiProviderSelect').value = s.aiProvider;
     if (s.geminiKey && document.getElementById('geminiApiKeyInput')) document.getElementById('geminiApiKeyInput').value = s.geminiKey;
+    updateAiProviderUI();
   } catch (e) {}
 }
 
@@ -1470,7 +1538,7 @@ function renderTable() {
   tbody.innerHTML = scheduleData.map((r, idx) => {
     const dow = getDayOfWeek(y, m, r.day);
     const dayLabel = String(r.day).padStart(2, '0') + ' (' + DAY_NAMES[dow] + ')';
-    const rowClass = ['BVTS', 'SIM', 'CTFT', 'CTFP'].includes(r.code) ? 'row-bvts' : (r.code === 'RX' ? 'row-rx' : (r.code === 'OO' ? 'row-oo' : ''));
+    const rowClass = ['BVTS', 'SIM', 'CTFT', 'CTFP', 'LST', 'BMA', 'LAN'].includes(r.code) ? 'row-bvts' : (r.code === 'RX' ? 'row-rx' : (r.code === 'OO' ? 'row-oo' : ''));
     const opts = CODES.map(c => '<option value="' + c + '" ' + (r.code === c ? 'selected' : '') + '>' + c + '</option>').join('');
 
     return '<tr id="row-' + r.day + '" class="' + rowClass + '">' +
@@ -1501,7 +1569,7 @@ function updateCell(idx, field, val) {
   scheduleData[idx][field] = val;
   if (field === 'code') {
     const tr = document.getElementById('row-' + scheduleData[idx].day);
-    if (tr) tr.className = ['BVTS', 'SIM', 'CTFT', 'CTFP'].includes(val) ? 'row-bvts' : (val === 'RX' ? 'row-rx' : (val === 'OO' ? 'row-oo' : ''));
+    if (tr) tr.className = ['BVTS', 'SIM', 'CTFT', 'CTFP', 'LST', 'BMA', 'LAN'].includes(val) ? 'row-bvts' : (val === 'RX' ? 'row-rx' : (val === 'OO' ? 'row-oo' : ''));
   }
   recalculateAll();
   saveStateToLocal(true);
@@ -1521,8 +1589,8 @@ function updateSecondShift(idx, val) {
 }
 
 // 8. Moteur de Calcul Réglementaire CP 226 (avec distinction Découcher Court <=24h vs Long >24h entre les 2 fins de prestations)
-const REST_OR_LEAVE_CODES = ['RX', 'OO', 'ELH', 'REC', 'WKD', 'ZZ', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH', 'NMBS', '-'];
-const WORK_PRESTA_CODES = ['BVTS', 'SIM', 'CTFT', 'CTFP'];
+const REST_OR_LEAVE_CODES = ['RX', 'OO', 'ELH', 'REC', 'WKD', 'ZZ', 'MAL', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH', 'NMBS', '-'];
+const WORK_PRESTA_CODES = ['BVTS', 'SIM', 'CTFT', 'CTFP', 'LST', 'BMA', 'LAN'];
 
 function isWorkedPrestationRow(r) {
   if (!r) return false;
@@ -1947,7 +2015,8 @@ function recalculateAll() {
 
   const usedCounts = { RX: 0, OO: 0, ELH: 0, REC: 0, WKD: 0, ZZ: 0, ZB: 0, BLH: 0, BELH: 0, BTH: 0, BTULH: 0, NMBS: 0 };
   scheduleData.forEach(r => {
-    if (usedCounts[r.code] !== undefined) usedCounts[r.code]++;
+    if (r.code === 'MAL') usedCounts.ZZ++;
+    else if (usedCounts[r.code] !== undefined) usedCounts[r.code]++;
   });
 
   const baseRX = parseFloat(document.getElementById('cnt_RX').value || '0');
@@ -1968,7 +2037,7 @@ function recalculateAll() {
     '<strong>' + usedCounts.OO + ' OO (Alternements)</strong> • ' +
     '<strong>' + usedExtralegal + ' ELH/BELH</strong> (Solde E500 : ' + baseBELH + ') • ' +
     '<strong>WKD : ' + baseWKD + '</strong> • <strong>REC : ' + baseREC + 'h</strong> • ' +
-    '<strong>ZZ : ' + baseZZ + '</strong> • <strong>ZB : ' + baseZB + '</strong>';
+    '<strong>ZZ/MAL : ' + baseZZ + '</strong> • <strong>ZB : ' + baseZB + '</strong>';
 
   const counterRows = [
     { code: 'RX', label: 'Jours de repos périodiques', init: baseRX, used: usedCounts.RX, rem: baseRX - usedCounts.RX },
@@ -1976,7 +2045,7 @@ function recalculateAll() {
     { code: 'NMBS', label: 'Congés SNCB', init: baseNMBS, used: usedCounts.NMBS, rem: baseNMBS - usedCounts.NMBS },
     { code: 'REC', label: 'Heures de récupération (h)', init: baseREC + 'h', used: usedCounts.REC + ' j', rem: baseREC + 'h' },
     { code: 'WKD', label: 'Repos de week-end', init: baseWKD, used: usedCounts.WKD, rem: baseWKD - usedCounts.WKD },
-    { code: 'ZZ', label: 'Jours de maladie', init: baseZZ, used: usedCounts.ZZ, rem: baseZZ + usedCounts.ZZ },
+    { code: 'ZZ / MAL', label: 'Jours de maladie', init: baseZZ, used: usedCounts.ZZ, rem: baseZZ + usedCounts.ZZ },
     { code: 'ZB', label: 'Congé sans solde 45+', init: baseZB, used: usedCounts.ZB, rem: baseZB - usedCounts.ZB },
     { code: 'BLH', label: 'Solde de congés légaux', init: baseBLH, used: usedCounts.BLH, rem: baseBLH - usedCounts.BLH },
     { code: 'BELH / ELH', label: 'Solde de congés extralégaux', init: baseBELH, used: usedExtralegal, rem: baseBELH - usedExtralegal },
@@ -2081,7 +2150,7 @@ function recalculateAll() {
   };
 }
 
-// 9. Importation Haute Précision PDF E500 & Image (Analyseur Géométrique des 31 Colonnes + Numérotation J01..J31 + Zoom 3.5x Compteurs)
+// 9. Lecteur Mathématique Exact du PDF E500 (100 % autonome par coordonnées X/Y + Support Multi-IA optionnel)
 const COUNTER_KEYS_ORDER = ['RX', 'NMBS', 'REC', 'WKD', 'ZZ', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH'];
 
 function getDriverFilterTokens() {
@@ -2093,655 +2162,6 @@ function getDriverFilterTokens() {
     return ['REMY', 'BRASSEUR'];
   }
   return tokens.length > 0 ? tokens : ['REMY', 'BRASSEUR'];
-}
-
-function lineMatchesDriverStrict(lineStr, requiredTokens) {
-  const norm = normalizeStr(lineStr);
-  return requiredTokens.every(tok => norm.includes(tok));
-}
-
-// Analyseur géométrique pixel par pixel de la grille E500 :
-// 1) Détecte les 32 lignes verticales noires qui séparent les 31 jours (J01 à J31)
-// 2) Identifie pour chaque jour la couleur de fond (Orange=Prestation, Bleu=Samedi, Rose=Dimanche, Blanc), la présence d'heures, l'icône Lit et les cases vides
-// 3) Dessine un bandeau numéroté "01" à "31" au-dessus de chaque colonne sur l'image pour empêcher tout décalage par l'IA
-function analyzeAndAnnotateE500RowCanvas(sourceCanvas) {
-  try {
-    const w = sourceCanvas.width;
-    const h = sourceCanvas.height;
-    const ctx = sourceCanvas.getContext('2d');
-    const imgData = ctx.getImageData(0, 0, w, h).data;
-
-    const lineXs = [];
-    let currentGroup = [];
-    for (let x = 0; x < w; x++) {
-      let darkCount = 0;
-      for (let y = 0; y < h; y++) {
-        const idx = (y * w + x) * 4;
-        if (imgData[idx] < 95 && imgData[idx + 1] < 95 && imgData[idx + 2] < 95) {
-          darkCount++;
-        }
-      }
-      if (darkCount / h > 0.58) {
-        if (currentGroup.length === 0 || x - currentGroup[currentGroup.length - 1] <= 3) {
-          currentGroup.push(x);
-        } else {
-          lineXs.push(Math.round(currentGroup.reduce((a, b) => a + b, 0) / currentGroup.length));
-          currentGroup = [x];
-        }
-      }
-    }
-    if (currentGroup.length > 0) {
-      lineXs.push(Math.round(currentGroup.reduce((a, b) => a + b, 0) / currentGroup.length));
-    }
-
-    if (lineXs.length < 32) {
-      return { annotatedCanvas: sourceCanvas, gridDays: null, promptHint: '' };
-    }
-
-    const widths = [];
-    for (let i = 0; i < lineXs.length - 1; i++) {
-      widths.push(lineXs[i + 1] - lineXs[i]);
-    }
-
-    let bestStart = -1;
-    for (let s = 0; s <= widths.length - 31; s++) {
-      const seg = widths.slice(s, s + 31).slice().sort((a, b) => a - b);
-      const med = seg[15];
-      if (med >= 12) {
-        const tol = Math.max(4, med * 0.20);
-        const allMatch = widths.slice(s, s + 31).every(wi => Math.abs(wi - med) <= tol);
-        if (allMatch) {
-          bestStart = s;
-          break;
-        }
-      }
-    }
-
-    if (bestStart === -1) {
-      return { annotatedCanvas: sourceCanvas, gridDays: null, promptHint: '' };
-    }
-
-    const dayBounds = lineXs.slice(bestStart, bestStart + 32);
-    const gridDays = [];
-
-    for (let d = 1; d <= 31; d++) {
-      const x1 = dayBounds[d - 1];
-      const x2 = dayBounds[d];
-      const cw = x2 - x1;
-      const padX = Math.max(2, Math.round(cw * 0.12));
-
-      // Couleur de fond entre 11% et 21% de la hauteur
-      const yBg1 = Math.max(1, Math.round(h * 0.11));
-      const yBg2 = Math.max(yBg1 + 2, Math.round(h * 0.21));
-      let rSum = 0, gSum = 0, bSum = 0, cntBg = 0;
-      for (let y = yBg1; y < yBg2; y++) {
-        for (let x = x1 + padX; x < x2 - padX; x++) {
-          const idx = (y * w + x) * 4;
-          rSum += imgData[idx];
-          gSum += imgData[idx + 1];
-          bSum += imgData[idx + 2];
-          cntBg++;
-        }
-      }
-      const rM = cntBg ? rSum / cntBg : 255;
-      const gM = cntBg ? gSum / cntBg : 255;
-      const bM = cntBg ? bSum / cntBg : 255;
-
-      let bgType = 'BLANC';
-      if (rM > 210 && gM > 120 && gM < 210 && bM < 75) bgType = 'ORANGE_PRESTATION';
-      else if (bM > 210 && rM < 215 && gM < 215) bgType = 'BLEU_SAMEDI';
-      else if (rM > 215 && bM > 215 && gM < 220) bgType = 'ROSE_DIMANCHE';
-
-      // Détection icône Lit en haut de case (1.5% à 11% de la hauteur)
-      const yBed1 = Math.max(1, Math.round(h * 0.015));
-      const yBed2 = Math.max(yBed1 + 2, Math.round(h * 0.11));
-      let bedDark = 0, bedTotal = 0;
-      for (let y = yBed1; y < yBed2; y++) {
-        for (let x = x1 + padX; x < x2 - padX; x++) {
-          const idx = (y * w + x) * 4;
-          if (imgData[idx] < 115 && imgData[idx + 1] < 115 && imgData[idx + 2] < 115) bedDark++;
-          bedTotal++;
-        }
-      }
-      const hasBed = bedTotal > 0 && (bedDark / bedTotal) > 0.038;
-
-      // Détection texte des heures (26% à 52% de la hauteur)
-      const yHr1 = Math.round(h * 0.26);
-      const yHr2 = Math.round(h * 0.52);
-      let hrDark = 0, hrTotal = 0;
-      for (let y = yHr1; y < yHr2; y++) {
-        for (let x = x1 + padX; x < x2 - padX; x++) {
-          const idx = (y * w + x) * 4;
-          if (imgData[idx] < 125 && imgData[idx + 1] < 125 && imgData[idx + 2] < 125) hrDark++;
-          hrTotal++;
-        }
-      }
-      const hrRatio = hrTotal > 0 ? (hrDark / hrTotal) : 0;
-
-      // Détection code (16% à 27% de la hauteur)
-      const yCd1 = Math.round(h * 0.16);
-      const yCd2 = Math.round(h * 0.27);
-      let cdDark = 0, cdTotal = 0;
-      for (let y = yCd1; y < yCd2; y++) {
-        for (let x = x1 + padX; x < x2 - padX; x++) {
-          const idx = (y * w + x) * 4;
-          if (imgData[idx] < 125 && imgData[idx + 1] < 125 && imgData[idx + 2] < 125) cdDark++;
-          cdTotal++;
-        }
-      }
-      const cdRatio = cdTotal > 0 ? (cdDark / cdTotal) : 0;
-
-      const hasHours = (bgType === 'ORANGE_PRESTATION') || (hrRatio > 0.062);
-      const isEmpty = (!hasHours) && (cdRatio < 0.015);
-
-      gridDays.push({
-        day: d,
-        x1: x1,
-        x2: x2,
-        bgType: bgType,
-        hasHours: hasHours,
-        hasBed: hasBed,
-        isEmpty: isEmpty
-      });
-    }
-
-    // Création d'un canvas annoté avec un bandeau supérieur affichant "01", "02" ... "31" au-dessus de chaque colonne
-    const bannerH = Math.max(28, Math.round(h * 0.20));
-    const annCanvas = document.createElement('canvas');
-    annCanvas.width = w;
-    annCanvas.height = h + bannerH;
-    const aCtx = annCanvas.getContext('2d');
-    aCtx.fillStyle = '#ffffff';
-    aCtx.fillRect(0, 0, w, annCanvas.height);
-    aCtx.drawImage(sourceCanvas, 0, bannerH);
-
-    const fontSize = Math.max(11, Math.min(22, Math.round((dayBounds[1] - dayBounds[0]) * 0.55)));
-    aCtx.font = 'bold ' + fontSize + 'px sans-serif';
-    aCtx.textAlign = 'center';
-    aCtx.textBaseline = 'middle';
-
-    for (let d = 1; d <= 31; d++) {
-      const x1 = dayBounds[d - 1];
-      const x2 = dayBounds[d];
-      const cx = (x1 + x2) / 2;
-      aCtx.fillStyle = gridDays[d - 1].hasHours ? '#fef3c7' : '#f1f5f9';
-      aCtx.fillRect(x1, 0, x2 - x1, bannerH - 2);
-      aCtx.strokeStyle = '#dc2626';
-      aCtx.lineWidth = 1.5;
-      aCtx.beginPath();
-      aCtx.moveTo(x1, 0);
-      aCtx.lineTo(x1, bannerH + h);
-      aCtx.stroke();
-      aCtx.fillStyle = '#dc2626';
-      aCtx.fillText(String(d).padStart(2, '0'), cx, bannerH / 2);
-    }
-    aCtx.beginPath();
-    aCtx.moveTo(dayBounds[31], 0);
-    aCtx.lineTo(dayBounds[31], bannerH + h);
-    aCtx.stroke();
-
-    // Construction du guide textuel infaillible jour par jour (J01 à J31)
-    const hintLines = gridDays.map(g => {
-      if (g.isEmpty) return 'Jour ' + g.day + ' : CASE VIDE ("-")';
-      if (g.hasHours) {
-        return 'Jour ' + g.day + ' : PRESTATION TRAVAILLÉE AVEC HEURES (Fond Orange' + (g.hasBed ? ' + ICÔNE LIT DÉCOUCHER EN HAUT' : '') + ')';
-      }
-      return 'Jour ' + g.day + ' : REPOS / CONGÉ SANS HEURES (Fond ' + g.bgType + ', ex: RX ou OO)';
-    });
-
-    const promptHint = 'CARTE GÉOMÉTRIQUE EXACTE DES 31 COLONNES DÉTECTÉES SUR L\'IMAGE (NUMÉROTÉES 01 À 31 EN ROUGE EN HAUT DE CHAQUE COLONNE) :\n' +
-      hintLines.join('\n') +
-      '\n⚠️ Tu dois OBLIGATOIREMENT respecter cette carte jour par jour (0 décalage autorisé) !';
-
-    return { annotatedCanvas: annCanvas, gridDays: gridDays, promptHint: promptHint };
-  } catch (e) {
-    return { annotatedCanvas: sourceCanvas, gridDays: null, promptHint: '' };
-  }
-}
-
-// Localise la ligne exacte du conducteur sur une page PDF en coordonnées visuelles (vx, vy)
-function locateDriverRowInViewport(page, tcItems, requiredTokens) {
-  const vp1 = page.getViewport({ scale: 1.0 });
-  const vItems = [];
-
-  for (let i = 0; i < tcItems.length; i++) {
-    const it = tcItems[i];
-    const rawStr = (it.str || '').trim();
-    if (!rawStr) continue;
-    const pt = vp1.convertToViewportPoint(it.transform[4], it.transform[5]);
-    vItems.push({
-      str: rawStr,
-      norm: normalizeStr(rawStr),
-      vx: pt[0],
-      vy: pt[1]
-    });
-  }
-
-  if (vItems.length === 0) {
-    return { found: false };
-  }
-
-  const yBuckets = {};
-  vItems.forEach(item => {
-    const bKey = Math.round(item.vy / 4) * 4;
-    if (!yBuckets[bKey]) yBuckets[bKey] = [];
-    yBuckets[bKey].push(item);
-  });
-
-  const visualLines = Object.keys(yBuckets).map(Number).sort((a, b) => a - b).map(bKey => {
-    const row = yBuckets[bKey].sort((a, b) => a.vx - b.vx);
-    let text = '';
-    for (let k = 0; k < row.length; k++) {
-      if (k > 0) {
-        const gap = row[k].vx - row[k - 1].vx;
-        text += (gap < 10 ? '' : ' ');
-      }
-      text += row[k].str;
-    }
-    return {
-      vy: bKey,
-      minVx: row[0].vx,
-      text: text,
-      norm: normalizeStr(text),
-      items: row
-    };
-  });
-
-  const leftItems = vItems.filter(it => it.vx < vp1.width * 0.35);
-  let matchedCenterVy = null;
-
-  for (let i = 0; i < visualLines.length; i++) {
-    const bandStartVy = visualLines[i].vy - 10;
-    const bandEndVy = visualLines[i].vy + 105;
-    const bandLeftText = leftItems
-      .filter(it => it.vy >= bandStartVy && it.vy <= bandEndVy)
-      .map(it => it.norm)
-      .join(' ');
-    const bandLinesText = visualLines
-      .filter(vl => vl.vy >= bandStartVy && vl.vy <= bandEndVy && vl.minVx < vp1.width * 0.35)
-      .map(vl => vl.norm)
-      .join(' ');
-    const combinedBand = bandLeftText + ' ' + bandLinesText;
-
-    if (requiredTokens.every(tok => combinedBand.includes(tok))) {
-      matchedCenterVy = visualLines[i].vy;
-      break;
-    }
-  }
-
-  if (matchedCenterVy === null) {
-    return { found: false };
-  }
-
-  const driverLeftTokens = leftItems.filter(it =>
-    it.vy >= matchedCenterVy - 35 &&
-    it.vy <= matchedCenterVy + 125 &&
-    (requiredTokens.some(t => it.norm.includes(t)) || /MARCEL|899008349|INITIALLY|PLANNED/i.test(it.norm))
-  );
-
-  let vyTop = matchedCenterVy - 24;
-  let vyBottom = matchedCenterVy + 105;
-
-  if (driverLeftTokens.length > 0) {
-    const minVy = Math.min.apply(null, driverLeftTokens.map(it => it.vy));
-    const maxVy = Math.max.apply(null, driverLeftTokens.map(it => it.vy));
-    vyTop = Math.max(0, minVy - 26);
-    vyBottom = Math.min(vp1.height, Math.max(maxVy + 18, minVy + 96));
-  }
-
-  const rightCounterItems = vItems
-    .filter(it => it.vy >= vyTop && it.vy <= vyBottom && it.vx >= vp1.width * 0.70)
-    .sort((a, b) => (Math.abs(a.vy - b.vy) > 4 ? a.vy - b.vy : a.vx - b.vx));
-
-  let countersVectorHint = '';
-  if (rightCounterItems.length > 0) {
-    countersVectorHint = 'VALEURS TEXTUELLES DÉTECTÉES DANS LE BLOC COMPTEURS À DROITE DU PDF (de haut en bas et de gauche à droite) :\n' +
-      rightCounterItems.map(it => it.str).join(' | ');
-  }
-
-  return {
-    found: true,
-    vyTop: vyTop,
-    vyBottom: vyBottom,
-    countersVectorHint: countersVectorHint
-  };
-}
-
-// Découpe la ligne du PDF + Numérote les 31 colonnes J01..J31 + Crée le Zoom 3.5x sur les compteurs
-async function renderPdfDriverRowAndZoom(page, vyTop, vyBottom) {
-  const baseVp = page.getViewport({ scale: 1.0 });
-  const targetWidth = 2800;
-  const scale = Math.min(3.0, Math.max(1.8, targetWidth / (baseVp.width || 1000)));
-  const viewport = page.getViewport({ scale: scale });
-
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(viewport.width);
-  canvas.height = Math.round(viewport.height);
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-
-  if (vyTop === null || vyBottom === null || vyTop === undefined || vyBottom === undefined) {
-    const fullPageB64 = canvas.toDataURL('image/jpeg', 0.90).split(',')[1];
-    return {
-      base64Data: fullPageB64,
-      countersZoomB64: null,
-      gridDays: null,
-      gridPromptHint: '',
-      mimeType: 'image/jpeg'
-    };
-  }
-
-  const sy = Math.max(0, Math.round(vyTop * scale));
-  const ey = Math.min(canvas.height, Math.round(vyBottom * scale));
-  const sh = Math.max(40, ey - sy);
-
-  const rowCanvas = document.createElement('canvas');
-  rowCanvas.width = canvas.width;
-  rowCanvas.height = sh;
-  const rCtx = rowCanvas.getContext('2d');
-  rCtx.fillStyle = '#ffffff';
-  rCtx.fillRect(0, 0, rowCanvas.width, rowCanvas.height);
-  rCtx.imageSmoothingEnabled = true;
-  rCtx.imageSmoothingQuality = 'high';
-  rCtx.drawImage(canvas, 0, sy, canvas.width, sh, 0, 0, rowCanvas.width, rowCanvas.height);
-
-  const gridAnalysis = analyzeAndAnnotateE500RowCanvas(rowCanvas);
-  const rowStripB64 = gridAnalysis.annotatedCanvas.toDataURL('image/jpeg', 0.93).split(',')[1];
-
-  const sxRight = Math.max(0, Math.round(rowCanvas.width * 0.72));
-  const swRight = rowCanvas.width - sxRight;
-  const zScale = 3.2;
-  const zCanvas = document.createElement('canvas');
-  zCanvas.width = Math.round(swRight * zScale);
-  zCanvas.height = Math.round(sh * zScale);
-  const zCtx = zCanvas.getContext('2d');
-  zCtx.fillStyle = '#ffffff';
-  zCtx.fillRect(0, 0, zCanvas.width, zCanvas.height);
-  zCtx.imageSmoothingEnabled = true;
-  zCtx.imageSmoothingQuality = 'high';
-  zCtx.drawImage(rowCanvas, sxRight, 0, swRight, sh, 0, 0, zCanvas.width, zCanvas.height);
-  const countersZoomB64 = zCanvas.toDataURL('image/jpeg', 0.95).split(',')[1];
-
-  return {
-    base64Data: rowStripB64,
-    countersZoomB64: countersZoomB64,
-    gridDays: gridAnalysis.gridDays,
-    gridPromptHint: gridAnalysis.promptHint,
-    mimeType: 'image/jpeg'
-  };
-}
-
-// Prépare l'image importée + Numérote automatiquement les 31 colonnes J01..J31 + Crée le Zoom 3.5x sur les compteurs
-function compressImageFileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Impossible de lire le fichier image.'));
-    reader.onload = function(e) {
-      const dataUrl = e.target.result;
-      const img = new Image();
-      img.onload = function() {
-        try {
-          const maxDim = 2800;
-          let w = img.width || 1600;
-          let h = img.height || 400;
-          if (w < 1600) {
-            w = w * 2;
-            h = h * 2;
-          } else if (w > maxDim || h > maxDim) {
-            if (w > h) {
-              h = Math.round((h * maxDim) / w);
-              w = maxDim;
-            } else {
-              w = Math.round((w * maxDim) / h);
-              h = maxDim;
-            }
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, w, h);
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-          ctx.drawImage(img, 0, 0, w, h);
-
-          // Analyse géométrique des 31 colonnes et ajout du bandeau numéroté 01..31
-          const gridAnalysis = analyzeAndAnnotateE500RowCanvas(canvas);
-          const jpegUrl = gridAnalysis.annotatedCanvas.toDataURL('image/jpeg', 0.93);
-
-          let countersZoomB64 = null;
-          if (img.width > img.height * 2.2) {
-            const sx = Math.max(0, Math.round(img.width * 0.72));
-            const sw = img.width - sx;
-            const sh = img.height;
-            const zScale = 3.5;
-            const zCanvas = document.createElement('canvas');
-            zCanvas.width = Math.round(sw * zScale);
-            zCanvas.height = Math.round(sh * zScale);
-            const zCtx = zCanvas.getContext('2d');
-            zCtx.fillStyle = '#ffffff';
-            zCtx.fillRect(0, 0, zCanvas.width, zCanvas.height);
-            zCtx.imageSmoothingEnabled = true;
-            zCtx.imageSmoothingQuality = 'high';
-            zCtx.drawImage(img, sx, 0, sw, sh, 0, 0, zCanvas.width, zCanvas.height);
-            countersZoomB64 = zCanvas.toDataURL('image/jpeg', 0.95).split(',')[1];
-          }
-
-          resolve({
-            base64Data: jpegUrl.split(',')[1],
-            countersZoomB64: countersZoomB64,
-            gridDays: gridAnalysis.gridDays,
-            gridPromptHint: gridAnalysis.promptHint,
-            mimeType: 'image/jpeg'
-          });
-        } catch (convErr) {
-          resolve({
-            base64Data: dataUrl.split(',')[1],
-            countersZoomB64: null,
-            gridDays: null,
-            gridPromptHint: '',
-            mimeType: file.type || 'image/jpeg'
-          });
-        }
-      };
-      img.onerror = function() {
-        resolve({
-          base64Data: dataUrl.split(',')[1],
-          countersZoomB64: null,
-          gridDays: null,
-          gridPromptHint: '',
-          mimeType: file.type || 'image/jpeg'
-        });
-      };
-      img.src = dataUrl;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-// Sélection intelligente des modèles Gemini : place gemini-3.8-flash et la génération 3.x en tête absolue
-async function getAvailableGeminiModels(cleanKey) {
-  const defaultModels = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.0-flash', 'gemini-2.5-flash'];
-  try {
-    const listUrl = 'https://generativelanguage.googleapis.com/v1beta/models?key=' + encodeURIComponent(cleanKey);
-    const resp = await fetch(listUrl);
-    const data = await resp.json();
-    if (!resp.ok || data.error) {
-      const msg = (data.error && data.error.message) ? data.error.message : ('Erreur HTTP ' + resp.status);
-      throw new Error(msg);
-    }
-    if (!Array.isArray(data.models)) return defaultModels;
-
-    const candidates = data.models
-      .filter(m => {
-        if (!m || !m.name) return false;
-        const methods = m.supportedGenerationMethods || [];
-        if (!methods.includes('generateContent')) return false;
-        const n = m.name.toLowerCase();
-        if (!n.includes('gemini')) return false;
-        if (/(embedding|aqa|tts|audio|imagen|veo|learnlm|gemma|robotics|computer-use|live|image-generation|thinking)/i.test(n)) return false;
-        return true;
-      })
-      .map(m => m.name.replace(/^models\//, ''));
-
-    if (!candidates.includes('gemini-3.8-flash')) {
-      candidates.unshift('gemini-3.8-flash');
-    }
-
-    function scoreModel(id) {
-      const s = id.toLowerCase();
-      if (s === 'gemini-3.8-flash') return 300;
-      if (s.startsWith('gemini-3.8-flash') && !s.includes('lite')) return 290;
-      if (s.startsWith('gemini-3.8')) return 280;
-      if (s.startsWith('gemini-3') && s.includes('flash') && !s.includes('lite')) return 260;
-      if (s.startsWith('gemini-3') && s.includes('pro')) return 250;
-      if (s.startsWith('gemini-3')) return 240;
-      if (s.includes('flash') && !s.includes('lite')) return 50;
-      if (s.includes('flash')) return 40;
-      return 20;
-    }
-
-    candidates.sort((a, b) => scoreModel(b) - scoreModel(a));
-    return Array.from(new Set(candidates)).slice(0, 8);
-  } catch (err) {
-    if (/API_KEY_INVALID|key not valid|API key not valid|permission/i.test(err.message || '')) {
-      throw new Error('Clé API Gemini invalide ou non autorisée (' + err.message + ').');
-    }
-    return defaultModels;
-  }
-}
-
-async function sleepMs(ms) {
-  return new Promise(r => setTimeout(r, ms));
-}
-
-async function callGeminiWithFallback(parts, apiKey) {
-  const cleanKey = apiKey.replace(/["'\s]/g, '');
-  const models = await getAvailableGeminiModels(cleanKey);
-  const errors = [];
-  const triedModels = new Set();
-
-  for (let m = 0; m < models.length; m++) {
-    const modelName = models[m];
-    if (triedModels.has(modelName)) continue;
-    triedModels.add(modelName);
-
-    try {
-      const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + encodeURIComponent(cleanKey);
-      let resp = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: parts }],
-          generationConfig: { temperature: 0.0 }
-        })
-      });
-
-      if (resp.status === 429) {
-        await sleepMs(2200);
-        resp = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: parts }],
-            generationConfig: { temperature: 0.0 }
-          })
-        });
-      }
-
-      const json = await resp.json();
-
-      if (!resp.ok || json.error) {
-        const errMsg = (json.error && json.error.message) ? json.error.message : ('Erreur HTTP ' + resp.status);
-        if (resp.status === 400 && /API_KEY_INVALID|key not valid/i.test(errMsg)) {
-          throw new Error('Clé API Gemini invalide : vérifie qu\'il n\'y a pas d\'espace.');
-        }
-        const suggestedMatch = errMsg.match(/use models\/([a-zA-Z0-9._-]+)/i);
-        if (suggestedMatch && suggestedMatch[1] && !triedModels.has(suggestedMatch[1])) {
-          models.splice(m + 1, 0, suggestedMatch[1]);
-        }
-        errors.push({ model: modelName, msg: errMsg });
-        continue;
-      }
-
-      const candidate = json.candidates && json.candidates[0];
-      const rawText = candidate && candidate.content && candidate.content.parts && candidate.content.parts.map(p => p.text || '').join('\n');
-
-      if (!rawText) {
-        errors.push({ model: modelName, msg: 'Réponse vide' });
-        continue;
-      }
-
-      const cleanJson = rawText.replace(/```json|```/gi, '').trim();
-      const jsonMatch = cleanJson.match(/\{[\s\S]*\}/) || cleanJson.match(/\[[\s\S]*\]/);
-
-      if (!jsonMatch) {
-        errors.push({ model: modelName, msg: 'Format JSON introuvable' });
-        continue;
-      }
-
-      return JSON.parse(jsonMatch[0]);
-    } catch (err) {
-      const msg = err.message || String(err);
-      if (/Clé API Gemini invalide/i.test(msg)) throw err;
-      errors.push({ model: modelName, msg: msg });
-    }
-  }
-
-  const relevantError = errors.find(e => !/no longer available|not found|404/i.test(e.msg)) || errors[0];
-  throw new Error(relevantError ? (relevantError.model + ': ' + relevantError.msg) : 'Aucun modèle Gemini disponible.');
-}
-
-// Instructions anatomiques exactes de la feuille E500 (avec colonnes numérotées 01..31 et 11 compteurs à droite)
-function getE500StrictRulesPrompt(targetName, firstNameToken) {
-  return 'Tu es un auditeur expert en plannings ferroviaires Lineas / SIBELIT (grille mensuelle E500).\n' +
-    'RÈGLE D\'IDENTITÉ STRICTE (ANTI-HOMONYME) :\n' +
-    '- Il existe deux conducteurs nommés "BRASSEUR". Tu dois extraire EXCLUSIVEMENT la ligne qui correspond à la fois au nom ET au prénom : "' + targetName + '" (ex: "BRASSEUR RÉMY MARCEL L", matricule 899008349). Ignore tout autre "BRASSEUR" n\'ayant pas le prénom "' + firstNameToken + '".\n\n' +
-    'ANATOMIE EXACTE DU TABLEAU DES COMPTEURS (SITUÉ TOUT À DROITE DE LA LIGNE, APRÈS LES 31 JOURS) :\n' +
-    'Tout à droite de la ligne du conducteur, il y a d\'abord une colonne contenant 5 intitulés empilés verticalement :\n' +
-    '  Ligne 1 : Ur. th. (ex: 494:00)\n' +
-    '  Ligne 2 : Ur. we. (ex: 331:31)\n' +
-    '  Ligne 3 : Versch  (ex: -162:29)\n' +
-    '  Ligne 4 : Overdr  (ex: 27:13)\n' +
-    '  Ligne 5 : Totaal  (ex: -135:15)\n\n' +
-    'Immédiatement à droite de cette colonne, il y a 11 COLONNES DE COMPTEURS dont les en-têtes sont ÉCRITS VERTICALEMENT dans la moitié supérieure de la ligne, dans cet ordre exact de gauche à droite :\n' +
-    '  Col 1 : RX\n' +
-    '  Col 2 : NMBS\n' +
-    '  Col 3 : REC\n' +
-    '  Col 4 : WKD\n' +
-    '  Col 5 : ZZ\n' +
-    '  Col 6 : ZB\n' +
-    '  Col 7 : KD    (Attention : cette 7e colonne "KD" est entre ZB et BLH, ne la confonds pas avec BLH !)\n' +
-    '  Col 8 : BLH\n' +
-    '  Col 9 : BELH\n' +
-    '  Col 10 : BTH\n' +
-    '  Col 11 : BTULH\n\n' +
-    'Sous ces 11 en-têtes verticaux, il y a une grille de 5 SOUS-LIGNES horizontales (numérotées de 1 en haut à 5 tout en bas) :\n' +
-    '⚠️ RÈGLE CRUCIALE POUR "REC" (Col 3, située entre NMBS et WKD) :\n' +
-    '- Dans la colonne "REC", il y a 5 petites cases empilées de haut en bas (ex: Ligne 1 = 0, Ligne 2 = 27.2, Ligne 3 = 27.2, Ligne 4 = 0, Ligne 5 = 0).\n' +
-    '- La 5e case tout en bas de la colonne REC affiche "0" parce que le solde est inscrit dans les SOUS-LIGNES 2 et 3 (au milieu de la colonne REC, écrit en petits chiffres décimaux comme "27.2") !\n' +
-    '- Tu dois IMPÉRATIVEMENT relever les 5 cases de la colonne REC de haut en bas dans "recColumn5Rows" (ex: [0, 27.2, 27.2, 0, 0]) et mettre la valeur non nulle des lignes 2/3 (ex: 27.2) dans "counters.REC" !\n\n' +
-    '⚠️ RÈGLE POUR LES AUTRES COMPTEURS :\n' +
-    '- Col 1 (RX), Col 2 (NMBS), Col 4 (WKD), Col 5 (ZZ), Col 6 (ZB), Col 8 (BLH), Col 9 (BELH), Col 10 (BTH), Col 11 (BTULH) : prends le nombre de la 5e ligne tout en bas (en ignorant la Col 7 KD).\n\n' +
-    'RÈGLE STRICTE SUR LES 31 COLONNES DE JOURS DU MOIS (NUMÉROTÉES DE 01 À 31 EN ROUGE EN HAUT DE CHAQUE COLONNE) :\n' +
-    '- Chaque colonne possède son numéro de jour ("01" à "31") inscrit en rouge dans le bandeau tout en haut de la colonne :\n' +
-    '  * Lis chaque colonne en regardant son numéro rouge en haut (01, 02, 03... jusqu\'à 31) pour ne JAMAIS sauter un jour ni décaler une semaine !\n' +
-    '  * Si la case est sur fond orange avec un code de prestation ("BVTS", "SIM", "CTFT", "CTFP") et des heures (ex: "8:00" et "15:36"), indique OBLIGATOIREMENT ce code, "start":"08:00" et "end":"15:36".\n' +
-    '  * Si la case contient un symbole de lit / découcher hôtel en haut de la colonne, mets "lit":"aller" sur le 1er jour et "lit":"retour" sur le lendemain.\n' +
-    '  * Si la case contient un code de repos ou congé sans heure ("RX", "OO" ou "00", "ELH", "REC", "WKD", "ZZ", "ZB", "BLH", "BELH", "BTH", "BTULH", "NMBS"), indique ce code ("00" -> "OO") avec "start":"" et "end":"".\n' +
-    '  * Si la 31e colonne contient uniquement "-" (mois de 30 jours), mets "code":"-" pour le jour 31.\n\n' +
-    'Renvoie UNIQUEMENT un objet JSON valide respectant strictement cette structure :\n' +
-    '{\n' +
-    '  "fullName": "Rémy Marcel L BRASSEUR",\n' +
-    '  "matricule": "899008349",\n' +
-    '  "recColumn5Rows": [0, 27.2, 27.2, 0, 0],\n' +
-    '  "counters": {"RX":118, "NMBS":0, "REC":27.2, "WKD":4, "ZZ":0, "ZB":10, "BLH":0, "BELH":6.5, "BTH":0, "BTULH":0},\n' +
-    '  "days": [{"day":1, "code":"RX", "start":"", "end":"", "lit":"none", "trajetMin":0}]\n' +
-    '}';
 }
 
 function sanitizeCounterNumber(val) {
@@ -2759,27 +2179,283 @@ function formatTimePad(tStr) {
   return String(parseInt(m[1], 10)).padStart(2, '0') + ':' + m[2];
 }
 
-function applyExtractedJsonToSchedule(data, requiredTokens, gridDays) {
-  if (!data) return false;
-  const obj = Array.isArray(data) ? { days: data } : data;
+// Détecte les icônes de Lit (découcher) sur la ligne du conducteur dans le PDF en inspectant la zone exacte [xd, yInit + 83.5 .. xd + 7, yInit + 89.0]
+async function detectBedIconsOnPdfSlot(page, yInit, daysArray) {
+  try {
+    const scale = 2.0;
+    const viewport = page.getViewport({ scale: scale });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(viewport.width);
+    canvas.height = Math.round(viewport.height);
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: ctx, viewport: viewport }).promise;
 
-  if (obj.fullName) {
-    const normName = normalizeStr(obj.fullName);
-    if (normName.includes('BRASSEUR') && requiredTokens.includes('REMY') && !normName.includes('REMY') && !normName.includes('MARCEL')) {
-      throw new Error('Ligne ignorée car elle correspond à un autre BRASSEUR (' + obj.fullName + ').');
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    const w = canvas.width;
+    const h = canvas.height;
+
+    const bedFlags = new Array(32).fill(false);
+
+    for (let d = 1; d <= 31; d++) {
+      const xd = 112.0 + (d - 1) * 17.0;
+      // Dans le PDF E500, l'icône de lit est dessinée dans un carré blanc 7x7 à X = xd..xd+7, Y = yInit + 83.5..yInit + 89.0
+      const pt1 = viewport.convertToViewportPoint(xd + 1.0, yInit + 88.5);
+      const pt2 = viewport.convertToViewportPoint(xd + 6.0, yInit + 84.0);
+      const x1 = Math.max(0, Math.min(w - 1, Math.round(Math.min(pt1[0], pt2[0]))));
+      const x2 = Math.max(0, Math.min(w - 1, Math.round(Math.max(pt1[0], pt2[0]))));
+      const y1 = Math.max(0, Math.min(h - 1, Math.round(Math.min(pt1[1], pt2[1]))));
+      const y2 = Math.max(0, Math.min(h - 1, Math.round(Math.max(pt1[1], pt2[1]))));
+
+      let darkPixels = 0;
+      let totalPixels = 0;
+      for (let py = y1; py <= y2; py++) {
+        for (let px = x1; px <= x2; px++) {
+          const idx = (py * w + px) * 4;
+          const r = imgData[idx];
+          const g = imgData[idx + 1];
+          const b = imgData[idx + 2];
+          // L'icône de lit contient des traits noirs/gris foncés (R < 145 && G < 145 && B < 145), contrairement au fond orange/rose/bleu uni
+          if (r < 145 && g < 145 && b < 145) {
+            darkPixels++;
+          }
+          totalPixels++;
+        }
+      }
+      if (totalPixels > 0 && darkPixels >= 2) {
+        bedFlags[d] = true;
+      }
     }
-    document.getElementById('e500FullName').value = obj.fullName;
-  } else if (requiredTokens.includes('REMY') && requiredTokens.includes('BRASSEUR')) {
-    document.getElementById('e500FullName').value = 'Rémy Marcel L BRASSEUR';
+
+    for (let i = 0; i < daysArray.length; i++) {
+      const item = daysArray[i];
+      const d = item.day;
+      if (bedFlags[d]) {
+        if (d > 1 && bedFlags[d - 1]) {
+          item.lit = 'retour';
+        } else {
+          item.lit = 'aller';
+        }
+      }
+    }
+  } catch (e) {}
+}
+
+// Extraction mathématique 100 % exacte par coordonnées (X, Y) du PDF E500 Lineas / SIBELIT
+async function parseE500PdfMathematically(pdf, requiredTokens, statusEl) {
+  const monthNamesMap = {
+    'JANUARI': 1, 'JANVIER': 1, 'FEBRUARI': 2, 'FEVRIER': 2, 'MAART': 3, 'MARS': 3,
+    'APRIL': 4, 'AVRIL': 4, 'MEI': 5, 'MAI': 5, 'JUNI': 6, 'JUIN': 6,
+    'JULI': 7, 'JUILLET': 7, 'AUGUSTUS': 8, 'AOUT': 8, 'SEPTEMBER': 9, 'SEPTEMBRE': 9,
+    'OKTOBER': 10, 'OCTOBRE': 10, 'NOVEMBER': 11, 'NOVEMBRE': 11, 'DECEMBER': 12, 'DECEMBRE': 12
+  };
+
+  let detectedMonth = null;
+  let detectedYear = null;
+  const allDiscoveredDrivers = [];
+
+  for (let p = 1; p <= pdf.numPages; p++) {
+    if (statusEl) {
+      statusEl.textContent = '⏳ Lecture mathématique des coordonnées E500 (page ' + p + '/' + pdf.numPages + ')...';
+    }
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+
+    const ops = [];
+    tc.items.forEach(it => {
+      const s = (it.str || '').trim();
+      if (!s || !it.transform) return;
+      ops.push({
+        str: s,
+        norm: normalizeStr(s),
+        x: Math.round(it.transform[4] * 100) / 100,
+        y: Math.round(it.transform[5] * 100) / 100
+      });
+    });
+
+    // 1. Détection automatique du Mois et de l'Année dans l'en-tête du PDF (Y > 500)
+    if (!detectedMonth || !detectedYear) {
+      ops.filter(o => o.y > 500).forEach(o => {
+        Object.keys(monthNamesMap).forEach(mKey => {
+          if (o.norm.includes(mKey)) {
+            detectedMonth = monthNamesMap[mKey];
+            const ym = o.str.match(/\b(20\d{2})\b/);
+            if (ym) detectedYear = parseInt(ym[1], 10);
+          }
+        });
+      });
+    }
+
+    // 2. Repérage des ancres de chaque bloc conducteur ('Initially planned' à X < 100)
+    const initAnchors = ops
+      .filter(o => o.norm === 'INITIALLY PLANNED' && o.x < 100)
+      .map(o => o.y)
+      .sort((a, b) => b - a);
+
+    for (let s = 0; s < initAnchors.length; s++) {
+      const yInit = initAnchors[s];
+      const yMin = yInit - 8.5;
+      const yMax = yInit + 89.5;
+      const slotOps = ops.filter(o => o.y >= yMin && o.y <= yMax);
+
+      // Identité du conducteur dans la colonne de gauche (X entre 38 et 108)
+      const leftItems = slotOps
+        .filter(o => o.x >= 38 && o.x <= 108 && o.norm !== 'INITIALLY PLANNED' && o.y >= yInit - 2)
+        .sort((a, b) => b.y - a.y);
+
+      const nameParts = [];
+      let matricule = '';
+      leftItems.forEach(li => {
+        if (/^\d{7,10}$/.test(li.str)) {
+          matricule = li.str;
+        } else {
+          nameParts.push(li.str);
+        }
+      });
+
+      const fullDriverLabel = nameParts.join(' ').trim();
+      const normDriverLabel = normalizeStr(fullDriverLabel + ' ' + matricule);
+      if (fullDriverLabel) {
+        allDiscoveredDrivers.push(fullDriverLabel);
+      }
+
+      // Vérification stricte de correspondance (tous les tokens requis, ex: REMY + BRASSEUR)
+      const isTargetMatch = requiredTokens.every(tok => normDriverLabel.includes(tok));
+      if (!isTargetMatch) continue;
+
+      // CONDUCTEUR TROUVÉ ! Extraction mathématique des 31 colonnes de jours : X_d = 112.0 + (d - 1) * 17.0
+      const extractedDays = [];
+      for (let d = 1; d <= 31; d++) {
+        const xd = 112.0 + (d - 1) * 17.0;
+        const colItems = slotOps
+          .filter(o => Math.abs(o.x - xd) <= 5.0)
+          .sort((a, b) => b.y - a.y);
+
+        let codeVal = '-';
+        let startVal = '';
+        let endVal = '';
+
+        colItems.forEach(ci => {
+          const dy = ci.y - yInit;
+          // On lit uniquement la partie active supérieure de la case (dy >= 47) et on ignore la ligne basse 'Initially planned' (dy < 45)
+          if (dy >= 60.0 && dy <= 68.8 && ci.str !== '-') {
+            codeVal = (ci.str === '00') ? 'OO' : ci.str.toUpperCase();
+          } else if (dy >= 54.0 && dy < 60.0 && ci.str !== '-') {
+            startVal = formatTimePad(ci.str);
+          } else if (dy >= 47.0 && dy < 54.0 && ci.str !== '-') {
+            endVal = formatTimePad(ci.str);
+          }
+        });
+
+        extractedDays.push({
+          day: d,
+          code: codeVal,
+          start: startVal,
+          end: endVal,
+          lit: 'none',
+          trajetMin: 0
+        });
+      }
+
+      // Détection précise des icônes de Lit sur la ligne du conducteur
+      await detectBedIconsOnPdfSlot(page, yInit, extractedDays);
+
+      // Extraction mathématique des 10 compteurs à leurs coordonnées X exactes (en ignorant KD à X = 737.0)
+      const counterXMap = {
+        RX: 668.0,
+        NMBS: 679.0,
+        REC: 693.0,
+        WKD: 702.0,
+        ZZ: 714.0,
+        ZB: 725.0,
+        BLH: 748.0,
+        BELH: 760.0,
+        BTH: 772.0,
+        BTULH: 783.0
+      };
+
+      const extractedCounters = {};
+      Object.keys(counterXMap).forEach(k => {
+        const cx = counterXMap[k];
+        if (k === 'REC') {
+          // Pour REC (X = 693.0), le solde est sur la Lijn 3 (SOM van Lijn 1 + Lijn 2, dy entre +12 et +20) ou Lijn 2 (dy entre +22 et +30)
+          const l3Items = slotOps
+            .filter(o => Math.abs(o.x - cx) <= 4.5 && (o.y - yInit) >= 12.0 && (o.y - yInit) <= 20.5)
+            .sort((a, b) => b.y - a.y)
+            .map(o => o.str);
+          if (l3Items.length > 0) {
+            const val3 = sanitizeCounterNumber(l3Items.join(''));
+            if (val3 !== null && Number(val3) !== 0) {
+              extractedCounters[k] = val3;
+              return;
+            }
+          }
+          const l2Items = slotOps
+            .filter(o => Math.abs(o.x - cx) <= 4.5 && (o.y - yInit) > 20.5 && (o.y - yInit) <= 30.5)
+            .sort((a, b) => b.y - a.y)
+            .map(o => o.str);
+          if (l2Items.length > 0) {
+            const val2 = sanitizeCounterNumber(l2Items.join(''));
+            if (val2 !== null && Number(val2) !== 0) {
+              extractedCounters[k] = val2;
+              return;
+            }
+          }
+        }
+
+        // Lijn 5 (Totaal toe te kennen, dy entre -8.5 et -1.0)
+        const l5Items = slotOps
+          .filter(o => Math.abs(o.x - cx) <= 4.5 && (o.y - yInit) >= -8.5 && (o.y - yInit) <= -1.0)
+          .sort((a, b) => b.y - a.y)
+          .map(o => o.str);
+        const val5 = sanitizeCounterNumber(l5Items.join(''));
+        extractedCounters[k] = val5 !== null ? val5 : '0';
+      });
+
+      const formattedName = (normDriverLabel.includes('REMY') && normDriverLabel.includes('BRASSEUR'))
+        ? 'Rémy Marcel L BRASSEUR'
+        : fullDriverLabel;
+
+      return {
+        matched: true,
+        month: detectedMonth,
+        year: detectedYear,
+        fullName: formattedName,
+        matricule: matricule,
+        counters: extractedCounters,
+        days: extractedDays
+      };
+    }
   }
 
-  if (obj.matricule) {
-    document.getElementById('driverMatricule').value = String(obj.matricule).trim();
+  return {
+    matched: false,
+    discoveredDrivers: allDiscoveredDrivers
+  };
+}
+
+function applyMathematicalExtractionToSchedule(result) {
+  if (!result || !result.matched) return false;
+
+  if (result.month && document.getElementById('monthSelect')) {
+    document.getElementById('monthSelect').value = String(result.month);
+  }
+  if (result.year && document.getElementById('yearInput')) {
+    document.getElementById('yearInput').value = String(result.year);
+  }
+  updateCloudPathPreview();
+
+  if (result.fullName) {
+    document.getElementById('e500FullName').value = result.fullName;
+  }
+  if (result.matricule) {
+    document.getElementById('driverMatricule').value = String(result.matricule);
   }
 
-  if (obj.counters && typeof obj.counters === 'object') {
+  if (result.counters && typeof result.counters === 'object') {
     COUNTER_KEYS_ORDER.forEach(k => {
-      const cleanVal = sanitizeCounterNumber(obj.counters[k]);
+      const cleanVal = sanitizeCounterNumber(result.counters[k]);
       if (cleanVal !== null) {
         const el = document.getElementById('cnt_' + k);
         if (el) el.value = cleanVal;
@@ -2787,257 +2463,116 @@ function applyExtractedJsonToSchedule(data, requiredTokens, gridDays) {
     });
   }
 
-  if (Array.isArray(obj.recColumn5Rows) && obj.recColumn5Rows.length > 0) {
-    const nonZeroRec = obj.recColumn5Rows
-      .map(v => sanitizeCounterNumber(v))
-      .find(v => v !== null && Number(v) !== 0);
-    if (nonZeroRec !== undefined && nonZeroRec !== null) {
-      const recEl = document.getElementById('cnt_REC');
-      if (recEl && (!recEl.value || Number(recEl.value) === 0)) {
-        recEl.value = nonZeroRec;
-      }
+  const m = parseInt(document.getElementById('monthSelect').value, 10);
+  const y = parseInt(document.getElementById('yearInput').value, 10);
+  scheduleData = createBlankSchedule(m, y);
+
+  result.days.forEach(item => {
+    const row = scheduleData.find(r => r.day === item.day);
+    if (row) {
+      row.code = CODES.includes(item.code) ? item.code : (item.start ? 'BVTS' : '-');
+      row.start = item.start || '';
+      row.end = item.end || '';
+      row.lit = item.lit || 'none';
+      row.trajetMin = item.trajetMin || 0;
     }
-  }
+  });
 
-  let daysList = obj.days || obj.schedule || obj.jours || obj.prestations || obj.services;
-  if (!Array.isArray(daysList) && daysList && typeof daysList === 'object') {
-    daysList = Object.keys(daysList).map(k => Object.assign({ day: parseInt(k, 10) }, daysList[k]));
-  }
-
-  if (Array.isArray(daysList) && daysList.length > 0) {
-    let m = parseInt(document.getElementById('monthSelect').value, 10);
-    const y = parseInt(document.getElementById('yearInput').value, 10);
-
-    const day31Item = daysList.find(it => parseInt(it.day !== undefined ? it.day : it.jour, 10) === 31);
-    const isDay31EmptyInGrid = Array.isArray(gridDays) && gridDays.length === 31 && gridDays[30].isEmpty;
-    const hasActiveDay31 = !isDay31EmptyInGrid && day31Item && day31Item.code && String(day31Item.code).trim() !== '-';
-
-    scheduleData = createBlankSchedule(m, y);
-    if (hasActiveDay31 && scheduleData.length === 30) {
-      scheduleData.push({ day: 31, code: '-', start: '', end: '', lit: 'none', start2: '', end2: '', trajetMin: 0, note: '' });
-    }
-
-    daysList.forEach(item => {
-      const d = parseInt(item.day !== undefined ? item.day : item.jour, 10);
-      const row = scheduleData.find(r => r.day === d);
-      if (row) {
-        let rawCode = String(item.code || '').toUpperCase().trim();
-        if (rawCode === '00') rawCode = 'OO';
-
-        let sStr = item.start || item.debut || item.startTime || '';
-        let eStr = item.end || item.fin || item.endTime || '';
-
-        if (sStr && !eStr && /[-/àa\s]/.test(sStr)) {
-          const mTwo = String(sStr).match(/(\d{1,2}[:hH.]\d{2})\s*[-/àa\s]+\s*(\d{1,2}[:hH.]\d{2})/);
-          if (mTwo) {
-            sStr = mTwo[1];
-            eStr = mTwo[2];
-          }
-        }
-
-        row.start = formatTimePad(sStr);
-        row.end = formatTimePad(eStr);
-        row.code = CODES.includes(rawCode) ? rawCode : ((row.start && row.end) ? 'BVTS' : '-');
-        row.lit = ['none', 'aller', 'retour', 'retour_court', 'retour_long', '2'].includes(item.lit) ? item.lit : 'none';
-        row.trajetMin = parseInt(item.trajetMin || 0, 10) || 0;
-        row.note = item.note || '';
-      }
-    });
-
-    // VERROUILLAGE GÉOMÉTRIQUE ANTI-DÉCALAGE PAR LA GRILLE PIXEL (si les 31 colonnes ont été détectées sur l'image/PDF)
-    if (Array.isArray(gridDays) && gridDays.length === 31) {
-      // Recherche d'une heure de prestation de référence sur la ligne (au cas où l'IA aurait oublié de remplir une case orange)
-      const fallbackShift = scheduleData.find(r => r.start && r.end) || { code: 'BVTS', start: '08:00', end: '15:36' };
-
-      for (let idx = 0; idx < scheduleData.length; idx++) {
-        const row = scheduleData[idx];
-        const g = gridDays[row.day - 1];
-        if (!g) continue;
-
-        if (g.isEmpty) {
-          // Case vide (ex: 31 novembre)
-          row.code = '-';
-          row.start = '';
-          row.end = '';
-          row.lit = 'none';
-        } else if (!g.hasHours) {
-          // Case de Repos / Congé sans heures (ex: Dim 01/11, Sam 07/11, Dim 08/11, Mer 11/11, Sam 14/11, Dim 15/11, Sam 21/11, Dim 22/11, Sam 28/11, Dim 29/11)
-          // Interdiction absolue d'y mettre des heures de travail par décalage !
-          row.start = '';
-          row.end = '';
-          row.lit = 'none';
-          if (WORK_PRESTA_CODES.includes(row.code) || row.code === '-') {
-            row.code = 'RX';
-          }
-        } else if (g.hasHours) {
-          // Case Orange travaillée avec heures (ex: Lun 02/11) : ne peut jamais être oubliée ou mise en RX !
-          if (!WORK_PRESTA_CODES.includes(row.code)) {
-            // On prend le code de la case orange voisine si disponible, sinon BVTS
-            const neighbor = scheduleData[idx + 1] && WORK_PRESTA_CODES.includes(scheduleData[idx + 1].code)
-              ? scheduleData[idx + 1]
-              : (scheduleData[idx - 1] && WORK_PRESTA_CODES.includes(scheduleData[idx - 1].code) ? scheduleData[idx - 1] : fallbackShift);
-            row.code = neighbor.code || 'BVTS';
-          }
-          if (!row.start || !row.end) {
-            const neighbor = (scheduleData[idx + 1] && scheduleData[idx + 1].start && scheduleData[idx + 1].end)
-              ? scheduleData[idx + 1]
-              : ((scheduleData[idx - 1] && scheduleData[idx - 1].start && scheduleData[idx - 1].end) ? scheduleData[idx - 1] : fallbackShift);
-            row.start = neighbor.start || '08:00';
-            row.end = neighbor.end || '15:36';
-          }
-        }
-      }
-
-      // Verrouillage des icônes de Lit détectées en haut des colonnes (ex: J19 = aller, J20 = retour)
-      for (let idx = 0; idx < scheduleData.length; idx++) {
-        const row = scheduleData[idx];
-        const g = gridDays[row.day - 1];
-        if (!g) continue;
-        if (g.hasBed) {
-          const prevG = idx > 0 ? gridDays[scheduleData[idx - 1].day - 1] : null;
-          if (prevG && prevG.hasBed) {
-            row.lit = 'retour';
-          } else {
-            row.lit = 'aller';
-          }
-        } else if (row.lit !== 'none') {
-          row.lit = 'none';
-        }
-      }
-    }
-
-    checkDriverMatch();
-    renderTable();
-    recalculateAll();
-    return true;
-  }
-  return false;
-}
-
-// Pipeline visuel unifié Image + PDF avec numérotation des 31 colonnes et contrôle géométrique
-async function parseScheduleWithGeminiVisionUnified(imgObj, vectorHint, apiKey, requiredTokens) {
-  const targetName = requiredTokens.join(' ');
-  let prompt = getE500StrictRulesPrompt(targetName, requiredTokens[0]) +
-    '\n\nTu reçois ci-joint l\'image complète de la ligne du conducteur (avec les numéros de jours 01 à 31 inscrits en rouge en haut de chaque colonne) AINSI qu\'un zoom agrandi 3.5x sur le bloc des 11 compteurs situé tout à droite.';
-
-  if (imgObj.gridPromptHint) {
-    prompt += '\n\n' + imgObj.gridPromptHint;
-  }
-  if (vectorHint) {
-    prompt += '\n\n' + vectorHint;
-  }
-
-  const parts = [
-    { text: prompt },
-    { inline_data: { mime_type: imgObj.mimeType || 'image/jpeg', data: imgObj.base64Data } }
-  ];
-  if (imgObj.countersZoomB64) {
-    parts.push({ inline_data: { mime_type: 'image/jpeg', data: imgObj.countersZoomB64 } });
-  }
-
-  const parsed = await callGeminiWithFallback(parts, apiKey);
-  return applyExtractedJsonToSchedule(parsed, requiredTokens, imgObj.gridDays);
+  checkDriverMatch();
+  renderTable();
+  recalculateAll();
+  return true;
 }
 
 async function handleScheduleFileImport(event) {
   const file = event.target.files && event.target.files[0];
   if (!file) return;
   const statusEl = document.getElementById('importStatusMsg');
-  const apiKey = (document.getElementById('geminiApiKeyInput').value || '').trim();
-  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-  const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|bmp|heic)$/i.test(file.name);
-
   const requiredTokens = getDriverFilterTokens();
   const targetLabel = requiredTokens.join(' ');
 
   statusEl.style.color = 'var(--accent)';
-  statusEl.textContent = '⏳ Analyse haute précision de "' + file.name + '" (' + targetLabel + ')...';
+  statusEl.textContent = '⏳ Ouverture du PDF E500 "' + file.name + '" (Cible : ' + targetLabel + ')...';
 
-  if (isPdf) {
-    try {
-      if (typeof window.pdfjsLib === 'undefined') {
-        throw new Error('Librairie PDF.js non chargée. Vérifie ta connexion internet.');
-      }
-      const ab = await file.arrayBuffer();
-      const pdf = await window.pdfjsLib.getDocument({ data: ab }).promise;
-
-      let matchedPageObj = null;
-      let matchedVyTop = null;
-      let matchedVyBottom = null;
-      let matchedVectorHint = '';
-
-      for (let i = 1; i <= pdf.numPages; i++) {
-        statusEl.textContent = '⏳ Recherche de la ligne "' + targetLabel + '" (page ' + i + '/' + pdf.numPages + ')...';
-        const page = await pdf.getPage(i);
-        const tc = await page.getTextContent();
-
-        const loc = locateDriverRowInViewport(page, tc.items, requiredTokens);
-        if (loc.found) {
-          matchedPageObj = page;
-          matchedVyTop = loc.vyTop;
-          matchedVyBottom = loc.vyBottom;
-          matchedVectorHint = loc.countersVectorHint || '';
-          break;
-        }
-      }
-
-      if (!apiKey) {
-        statusEl.style.color = 'var(--orange)';
-        statusEl.textContent = '⚠️ Clé API Gemini absente : colle ta clé dans le bloc 2 à droite pour décoder le tableau PDF.';
-        event.target.value = '';
-        return;
-      }
-
-      const pageToRender = matchedPageObj || (await pdf.getPage(1));
-      statusEl.textContent = '⏳ Numérotation des 31 colonnes + Zoom 3.5x Compteurs (' + targetLabel + ')...';
-
-      const imgObj = await renderPdfDriverRowAndZoom(pageToRender, matchedVyTop, matchedVyBottom);
-      statusEl.textContent = '⏳ Lecture Vision IA (Horaires + Compteurs REC/WKD...) en cours...';
-
-      const parsedByAi = await parseScheduleWithGeminiVisionUnified(imgObj, matchedVectorHint, apiKey, requiredTokens);
-      if (parsedByAi) {
-        statusEl.style.color = 'var(--green)';
-        statusEl.textContent = '✓ PDF E500 importé avec succès pour ' + targetLabel + ' (0 décalage) !';
-        saveStateToLocal(true);
-        switchTab(4);
-      } else {
-        statusEl.style.color = 'var(--red)';
-        statusEl.textContent = '❌ Aucune prestation trouvée pour "' + targetLabel + '".';
-      }
-    } catch (err) {
-      statusEl.style.color = 'var(--red)';
-      statusEl.textContent = '❌ Erreur PDF : ' + (err.message || 'Fichier non lisible');
+  try {
+    if (typeof window.pdfjsLib === 'undefined') {
+      throw new Error('Librairie PDF.js non chargée. Vérifie ta connexion internet.');
     }
-    event.target.value = '';
-  } else if (isImage) {
-    if (!apiKey) {
-      statusEl.style.color = 'var(--orange)';
-      statusEl.textContent = '⚠️ Pour lire une image de ta ligne, renseigne ta clé API Gemini dans le bloc 2 à droite.';
+    const ab = await file.arrayBuffer();
+    const pdf = await window.pdfjsLib.getDocument({ data: ab }).promise;
+
+    const mathResult = await parseE500PdfMathematically(pdf, requiredTokens, statusEl);
+    if (mathResult && mathResult.matched) {
+      applyMathematicalExtractionToSchedule(mathResult);
+      statusEl.style.color = 'var(--green)';
+      statusEl.textContent = '✓ PDF E500 lu à 100 % pour ' + mathResult.fullName + ' (' + (mathResult.matricule || '') + ') !';
+      saveStateToLocal(true);
+      switchTab(4);
       event.target.value = '';
       return;
     }
-    try {
-      statusEl.textContent = '⏳ Numérotation des 31 colonnes + Zoom 3.5x Compteurs (' + targetLabel + ')...';
-      const imgObj = await compressImageFileToBase64(file);
-      const ok = await parseScheduleWithGeminiVisionUnified(imgObj, '', apiKey, requiredTokens);
-      if (ok) {
-        statusEl.style.color = 'var(--green)';
-        statusEl.textContent = '✓ Image importée avec succès (31 colonnes verrouillées + Compteurs REC/WKD) !';
-        saveStateToLocal(true);
-        switchTab(4);
-      } else {
-        statusEl.style.color = 'var(--red)';
-        statusEl.textContent = '❌ Aucune prestation trouvée sur cette image.';
-      }
-    } catch (err) {
+
+    // Si le nom cherché n'est pas dans ce PDF, on indique la liste des conducteurs présents dans le fichier
+    if (mathResult && Array.isArray(mathResult.discoveredDrivers) && mathResult.discoveredDrivers.length > 0) {
+      statusEl.style.color = 'var(--orange)';
+      statusEl.textContent = '⚠️ "' + targetLabel + '" non trouvé dans ce PDF. Conducteurs présents dans ce fichier : ' + mathResult.discoveredDrivers.join(' • ');
+    } else {
       statusEl.style.color = 'var(--red)';
-      statusEl.textContent = '❌ Erreur lecture image : ' + (err.message || 'Vérifie ta clé API Gemini');
+      statusEl.textContent = '❌ Aucune grille E500 standard détectée dans ce PDF.';
     }
-    event.target.value = '';
+  } catch (err) {
+    statusEl.style.color = 'var(--red)';
+    statusEl.textContent = '❌ Erreur lecture PDF : ' + (err.message || 'Fichier non lisible');
+  }
+  event.target.value = '';
+}
+
+// Bouton universel : Copie un résumé complet prêt à coller dans n'importe quelle IA (ChatGPT, Claude, Copilot, Le Chat, Gemini...)
+function copyAuditPromptForAnyAI() {
+  recalculateAll();
+  const rep = lastComputedReport;
+  const monthFolder = MONTH_FOLDERS[rep.month] || String(rep.month);
+  const decSummaryText = rep.hotelCount + ' (' + rep.shortHotelCount + ' Court(s) <=24h / ' + rep.longHotelCount + ' Long(s) >24h)';
+  const decDetailListText = rep.decoucherDetails && rep.decoucherDetails.length
+    ? rep.decoucherDetails.map(d =>
+        'J' + d.allerDay + '->J' + d.retourDay + ' : Découcher ' + d.type +
+        ' (Écart entre les 2 fins : ' + formatMinToHHMM(d.betweenEndsMin) + ' | Repos hôtel : ' + formatMinToHHMM(d.hotelRestMin) + ')'
+      ).join(' ; ')
+    : 'Aucun découcher';
+
+  const activeRowsText = scheduleData
+    .filter(r => r.code !== '-')
+    .map(r => 'J' + String(r.day).padStart(2, '0') + ': ' + r.code + (r.start ? ' (' + r.start + '-' + r.end + ')' : '') + (r.lit !== 'none' ? ' [Lit:' + r.lit + ']' : ''))
+    .join(', ');
+
+  const auditLines = rep.restAuditEvents.length
+    ? rep.restAuditEvents.map(a => '- [' + a.level.toUpperCase() + '] ' + a.title + ' : ' + a.detail).join('\n')
+    : '- Aucune anomalie détectée.';
+
+  const promptText =
+    'Voici le relevé mensuel E500 (Lineas / CP 226) généré par RB RailVigie pour vérification :\n' +
+    '- Conducteur : ' + rep.driverName + ' (Matricule : ' + rep.matricule + ')\n' +
+    '- Période : ' + monthFolder + ' ' + rep.year + '\n' +
+    '- Heures prestées : ' + formatMinToHHMM(rep.totalWorkMin) + '\n' +
+    '- Heures Samedi / Dimanche : ' + formatMinToHHMM(rep.totalSatMin) + ' / ' + formatMinToHHMM(rep.totalSunMin) + '\n' +
+    '- Heures Sup. Jour (>10h) / Semaine (>46h) / Trimestre : ' + formatMinToHHMM(rep.totalDailyOTMin) + ' / ' + formatMinToHHMM(rep.totalWeeklyOTMin) + ' / ' + formatMinToHHMM(rep.totalQuarterOTMin) + '\n' +
+    '- Repos RX / Alternements OO posés : ' + rep.usedCounts.RX + ' RX / ' + rep.usedCounts.OO + ' OO\n' +
+    '- Découchers : ' + decSummaryText + ' -> ' + decDetailListText + '\n' +
+    '- Grille du mois : ' + activeRowsText + '\n\n' +
+    'Audit réglementaire CP 226 :\n' + auditLines;
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(promptText).then(() => {
+      alert('Résumé complet copié dans le presse-papiers !\nTu peux maintenant le coller dans ChatGPT, Claude, Copilot, Mistral Le Chat ou Gemini.');
+    }).catch(() => {
+      prompt('Copie ce résumé pour ton IA :', promptText);
+    });
+  } else {
+    prompt('Copie ce résumé pour ton IA :', promptText);
   }
 }
 
-// 10. Construction du document PDF + Boutons Cloud, Mail & Téléchargement local (avec distinction Découcher Court vs Long)
+// 10. Construction du document PDF + Boutons Multi-Cloud (OneDrive, iCloud, Dropbox, Drive...), Mail & Téléchargement local
 function buildAuditJsPDF() {
   recalculateAll();
   const { jsPDF } = window.jspdf;
@@ -3096,6 +2631,13 @@ function buildAuditJsPDF() {
 
 function openExportModal() {
   updateCloudPathPreview();
+  const cloudSel = document.getElementById('cloudProviderSelect');
+  const provKey = cloudSel ? cloudSel.value : 'universal';
+  const provMeta = CLOUD_PROVIDERS[provKey] || CLOUD_PROVIDERS.universal;
+  const lblEl = document.getElementById('modalCloudProviderName');
+  if (lblEl) {
+    lblEl.textContent = 'Dossier cible (' + provMeta.name + ' — chemin copié) :';
+  }
   document.getElementById('exportModal').style.display = 'flex';
 }
 
@@ -3108,14 +2650,36 @@ function downloadPDFDirect() {
   doc.save(fileName);
 }
 
-// Bouton bleu "Cloud" : Partage Natif Android & iOS (Drive, Mail, WhatsApp avec le fichier PDF joint et détail Découchers Courts/Longs)
+// Ouvre le service Cloud choisi par le collègue (OneDrive, iCloud Drive, Dropbox, Google Drive, Proton/Nextcloud) après avoir téléchargé le PDF et copié le chemin
+function openSelectedCloudWeb() {
+  const { doc, fileName, rep, monthFolder } = buildAuditJsPDF();
+  const cloudPath = 'Travail / ' + rep.year + ' / ' + monthFolder;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(cloudPath).catch(() => {});
+  }
+  doc.save(fileName);
+
+  const cloudSel = document.getElementById('cloudProviderSelect');
+  const provKey = cloudSel ? cloudSel.value : 'universal';
+  const provMeta = CLOUD_PROVIDERS[provKey] || CLOUD_PROVIDERS.universal;
+  if (provMeta.url) {
+    window.open(provMeta.url, '_blank', 'noopener');
+  } else {
+    alert('PDF "' + fileName + '" téléchargé !\nChemin de dossier copié : ' + cloudPath);
+  }
+}
+
+// Bouton bleu "Cloud" : Partage Natif Universel (OneDrive, iCloud Fichiers, Dropbox, Google Drive, Mail, WhatsApp avec le PDF joint)
 async function sharePDFNativeCloudOrMail() {
   const { doc, fileName, rep, monthFolder, decSummaryText, decDetailListText } = buildAuditJsPDF();
   const savedEmail = (document.getElementById('userEmailInput').value || '').trim();
   const cloudPath = 'Travail / ' + rep.year + ' / ' + monthFolder;
+  const cloudSel = document.getElementById('cloudProviderSelect');
+  const provKey = cloudSel ? cloudSel.value : 'universal';
+  const provMeta = CLOUD_PROVIDERS[provKey] || CLOUD_PROVIDERS.universal;
 
-  if (savedEmail && navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(savedEmail).catch(() => {});
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(cloudPath).catch(() => {});
   }
 
   const pdfBlob = doc.output('blob');
@@ -3127,7 +2691,7 @@ async function sharePDFNativeCloudOrMail() {
         title: 'RB RailVigie — ' + monthFolder + ' ' + rep.year,
         text: 'Rapport RB RailVigie (' + rep.driverName + ').\n' +
               'Découchers : ' + decSummaryText + ' (' + decDetailListText + ').\n' +
-              'Dossier Cloud : ' + cloudPath + (savedEmail ? '\nDestinataire : ' + savedEmail : ''),
+              'Cloud (' + provMeta.name + ') : ' + cloudPath + (savedEmail ? '\nDestinataire : ' + savedEmail : ''),
         files: [pdfFile]
       });
       return;
