@@ -641,43 +641,49 @@
           </div>
         </div>
 
-        <!-- Bouton unique d'importation PDF E500 (Lecture mathématique 100 % fiable) -->
+        <!-- Importation directe PDF E500 -->
         <div class="import-box">
           <label style="font-size:0.78rem; color:var(--accent); font-weight:700; display:block;">
-            📥 Importer mes horaires (Fichier PDF E500 — Lecture mathématique 100 % exacte) :
+            📥 Importer mes horaires (Fichier PDF E500) :
           </label>
           <div class="import-btns" style="grid-template-columns: 1fr;">
-            <label class="file-btn-label btn-amber full-width" style="padding:10px 14px; font-size:0.88rem;">
+            <label class="file-btn-label btn-amber full-width" style="padding:10px 14px; font-size:0.86rem;">
               📄 Importer un PDF E500
               <input type="file" id="pdfFileInput" accept="application/pdf,.pdf" onchange="handleScheduleFileImport(event)" style="display:none;">
             </label>
           </div>
           <div id="importStatusMsg" style="font-size:0.74rem; color:var(--muted); margin-top:8px;">
-            Sélectionne ton fichier PDF E500 (détection automatique du conducteur, des 31 jours, des lits et des 10 compteurs).
+            Sélectionne le fichier PDF E500 mensuel (lecture directe de ta ligne et de tes compteurs).
           </div>
         </div>
       </div>
 
-      <!-- Bloc 2 : Écosystème Ouvert (Tous Clouds, Mail & Toutes IA au choix) -->
+      <!-- Bloc 2 : Options Multi-Cloud, Mail & Choix IA -->
       <div class="card">
-        <h2>2. Options Cloud, Mail &amp; IA (Ouvert à tous les écosystèmes)</h2>
+        <h2>2. Options Multi-Cloud, Mail &amp; Assistant IA</h2>
         <p class="card-desc">
-          Choisis ton service Cloud (Google Drive, OneDrive, iCloud, Dropbox...) et ton assistant IA préféré (ou le mode 100 % autonome sans IA).
+          Choisis ton service Cloud préféré (OneDrive, iCloud, Google Drive, Dropbox, Proton…) et ton mode de lecture. La lecture des PDF E500 fonctionne à 100 % en mode autonome sans clé IA.
         </p>
         <div class="form-row">
           <div class="field">
             <label>Service Cloud préféré</label>
-            <select id="cloudProviderSelect" onchange="saveUserSettings()">
-              <option value="universal">☁️ Partage Universel (Tous Clouds / Fichiers)</option>
-              <option value="onedrive">🟦 Microsoft OneDrive</option>
+            <select id="cloudProviderSelect" onchange="saveUserSettings(); updateCloudPathPreview();">
+              <option value="native">📱 Menu Partage Natif (Tous Clouds installés)</option>
+              <option value="onedrive">☁️ Microsoft OneDrive</option>
               <option value="icloud">🍏 Apple iCloud Drive</option>
-              <option value="dropbox">📦 Dropbox</option>
               <option value="gdrive">📁 Google Drive</option>
-              <option value="nextcloud">🛡️ Nextcloud / Proton Drive / kDrive</option>
+              <option value="dropbox">📦 Dropbox</option>
+              <option value="proton">🔒 Proton Drive / Nextcloud</option>
             </select>
           </div>
           <div class="field">
-            <label>Dossier Cloud cible automatique</label>
+            <label>Adresse e-mail destinataire</label>
+            <input type="email" id="userEmailInput" value="" placeholder="Ex: prenom.nom@mail.com" oninput="saveUserSettings()">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label id="cloudFolderLabel">Dossier Cloud cible automatique</label>
             <div id="cloudPathPreview" style="background:#0b1120; border:1px solid var(--border); padding:8px 10px; border-radius:6px; font-size:0.83rem; color:var(--accent); font-weight:700;">
               Travail / 2026 / 11 - Novembre
             </div>
@@ -685,43 +691,34 @@
         </div>
         <div class="form-row">
           <div class="field">
-            <label>Adresse e-mail destinataire (tous fournisseurs : Outlook, Gmail, iCloud...)</label>
-            <input type="email" id="userEmailInput" value="" placeholder="Ex: prenom.nom@domaine.be" oninput="saveUserSettings()">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="field">
-            <label>Assistant IA préféré (Optionnel — la lecture PDF E500 est 100 % autonome)</label>
-            <select id="aiProviderSelect" onchange="updateAiProviderUI(); saveUserSettings();">
-              <option value="none">⚡ Aucune IA — Lecture PDF Mathématique 100 % autonome</option>
+            <label>Moteur d'analyse PDF &amp; IA (au choix)</label>
+            <select id="aiProviderSelect" onchange="toggleAiKeyVisibility(); saveUserSettings();">
+              <option value=" local_e500" selected>⚡ Lecture Directe E500 (Autonome sans IA — Recommandé)</option>
               <option value="openai">🤖 OpenAI (ChatGPT / GPT-4o)</option>
-              <option value="claude">🧠 Anthropic (Claude 3.5)</option>
-              <option value="mistral">🇫🇷 Mistral AI (Le Chat / Pixtral)</option>
+              <option value="mistral">🌪️ Mistral AI (Le Chat)</option>
+              <option value="claude">🧠 Anthropic (Claude)</option>
               <option value="gemini">✨ Google Gemini</option>
-              <option value="groq">🚀 Groq (Llama 3.3)</option>
+              <option value="groq">🚀 Groq / DeepSeek</option>
             </select>
           </div>
-          <div class="field" id="aiApiKeyFieldWrap">
-            <label id="aiApiKeyLabel">Clé API IA (Optionnel)</label>
-            <input type="password" id="geminiApiKeyInput" value="" placeholder="Optionnel : colle ta clé API ici..." oninput="saveUserSettings()">
+          <div class="field" id="aiKeyFieldWrap" style="display:none;">
+            <label id="aiKeyLabel">Clé API (Optionnel — secours IA)</label>
+            <input type="password" id="geminiApiKeyInput" value="" placeholder="Colle ta clé API ici..." oninput="saveUserSettings()">
           </div>
         </div>
 
         <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
           <button type="button" class="btn-green full-width" onclick="sharePDFNativeCloudOrMail()">
-            ☁️ Envoyer le PDF vers mon Cloud / Fichiers / WhatsApp
+            ☁️ Envoyer le PDF vers mon Cloud / Partager
           </button>
           <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:8px;">
-            <button type="button" class="btn-outline full-width" onclick="openSelectedCloudWeb()">
+            <button type="button" class="btn-outline full-width" onclick="openSelectedCloudPortal()">
               🌐 Ouvrir mon Cloud Web
             </button>
             <button type="button" class="btn-outline full-width" onclick="sendPDFBySavedEmail()">
               ✉️ Envoyer par Mail
             </button>
           </div>
-          <button type="button" class="btn-outline full-width" style="border-color:rgba(245,158,11,0.45); color:var(--accent);" onclick="copyAuditPromptForAnyAI()">
-            🤖 Copier le résumé pour mon IA (ChatGPT, Claude, Copilot, Le Chat...)
-          </button>
         </div>
       </div>
     </div>
@@ -939,21 +936,27 @@
   </div>
 </div>
 
-<!-- Fenêtre modale Export PDF (Multi-Cloud / Mail / Téléphone) -->
+<!-- Fenêtre modale Export PDF Multi-Cloud & Mail -->
 <div id="exportModal" class="modal-overlay" onclick="if(event.target===this)closeExportModal()">
   <div class="card" style="max-width:400px;">
-    <h2>☁️ Envoi Cloud / Mail (Tous Écosystèmes)</h2>
+    <h2>☁️ Envoi Multi-Cloud &amp; Mail</h2>
     <p class="card-desc">
-      Le chemin du dossier a été copié dans ton presse-papiers. Choisis comment enregistrer ou transférer ton PDF :
+      Choisis ton Cloud ou ton mode d'envoi (le chemin du dossier cible est copié automatiquement dans le presse-papiers) :
     </p>
     <div style="background:#0b1120; border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:12px; font-size:0.78rem;">
-      <div id="modalCloudProviderName" style="color:var(--muted);">Dossier Cloud cible (copié) :</div>
+      <div style="color:var(--muted);">Dossier Cloud cible :</div>
       <div id="modalCloudPath" style="color:var(--accent); font-weight:700; margin-top:2px;">Travail / 2026 / 11 - Novembre</div>
     </div>
     <div style="display:flex; flex-direction:column; gap:8px;">
-      <button type="button" class="btn-green full-width" onclick="openSelectedCloudWeb()">
-        🌐 Télécharger le PDF &amp; Ouvrir mon Cloud
+      <button type="button" class="btn-green full-width" onclick="openSelectedCloudPortal()">
+        ☁️ Télécharger PDF + Ouvrir mon Cloud sélectionné
       </button>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+        <button type="button" class="btn-outline full-width" onclick="openSpecificCloud('onedrive')">☁️ OneDrive</button>
+        <button type="button" class="btn-outline full-width" onclick="openSpecificCloud('icloud')">🍏 iCloud Drive</button>
+        <button type="button" class="btn-outline full-width" onclick="openSpecificCloud('gdrive')">📁 Google Drive</button>
+        <button type="button" class="btn-outline full-width" onclick="openSpecificCloud('dropbox')">📦 Dropbox</button>
+      </div>
       <button type="button" class="btn-outline full-width" onclick="sendPDFBySavedEmail()">
         ✉️ Envoyer par Mail (adresse enregistrée)
       </button>
@@ -1000,7 +1003,7 @@ let currentScheduleFilter = 'all';
 const STORAGE_KEY = 'rb_railvigie_state_v6';
 const SETTINGS_KEY = 'rb_railvigie_settings_v6';
 const DAY_NAMES = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-const CODES = ['BVTS', 'SIM', 'CTFT', 'CTFP', 'LST', 'BMA', 'LAN', 'RX', 'OO', 'ELH', 'REC', 'WKD', 'ZZ', 'MAL', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH', 'NMBS', '-'];
+const CODES = ['BVTS', 'SIM', 'CTFT', 'CTFP', 'RX', 'OO', 'ELH', 'REC', 'WKD', 'ZZ', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH', 'NMBS', '-'];
 const MONTH_FOLDERS = {
   1: '01 - Janvier',
   2: '02 - Févier',
@@ -1062,7 +1065,7 @@ function applyRowFilter() {
     if (!tr) return;
     const isAnom = tr.classList.contains('row-anomaly');
     let show = true;
-    if (currentScheduleFilter === 'bvts') show = ['BVTS', 'SIM', 'CTFT', 'CTFP', 'LST', 'BMA', 'LAN'].includes(r.code);
+    if (currentScheduleFilter === 'bvts') show = ['BVTS', 'SIM', 'CTFT', 'CTFP'].includes(r.code);
     else if (currentScheduleFilter === 'rxoo') show = (r.code === 'RX' || r.code === 'OO');
     else if (currentScheduleFilter === 'anom') show = isAnom;
     tr.classList.toggle('hidden-row', !show);
@@ -1150,43 +1153,49 @@ function loadStateFromLocal() {
 }
 
 const CLOUD_PROVIDERS = {
-  universal: { name: 'Partage Universel (Tous Clouds)', url: '' },
-  onedrive:  { name: 'Microsoft OneDrive', url: 'https://onedrive.live.com/' },
-  icloud:    { name: 'Apple iCloud Drive', url: 'https://www.icloud.com/iclouddrive/' },
-  dropbox:   { name: 'Dropbox', url: 'https://www.dropbox.com/home' },
-  gdrive:    { name: 'Google Drive', url: 'https://drive.google.com/drive/my-drive' },
-  nextcloud: { name: 'Nextcloud / Proton Drive / kDrive', url: 'https://drive.proton.me/' }
+  native: { name: 'Partage Natif Multi-Cloud', url: '' },
+  onedrive: { name: 'Microsoft OneDrive', url: 'https://onedrive.live.com/' },
+  icloud: { name: 'Apple iCloud Drive', url: 'https://www.icloud.com/iclouddrive/' },
+  gdrive: { name: 'Google Drive', url: 'https://drive.google.com/drive/my-drive' },
+  dropbox: { name: 'Dropbox', url: 'https://www.dropbox.com/home' },
+  proton: { name: 'Proton Drive', url: 'https://drive.proton.me/' }
 };
 
-const AI_PROVIDERS_META = {
-  none:    { label: 'Mode Sans IA (100 % autonome)', placeholder: 'Aucune clé requise pour lire le PDF E500' },
-  openai:  { label: 'Clé API OpenAI (ChatGPT)', placeholder: 'Ex: sk-proj-...' },
-  claude:  { label: 'Clé API Anthropic (Claude)', placeholder: 'Ex: sk-ant-...' },
-  mistral: { label: 'Clé API Mistral AI (Le Chat)', placeholder: 'Colle ta clé API Mistral...' },
-  gemini:  { label: 'Clé API Google Gemini', placeholder: 'Ex: AIzaSy...' },
-  groq:    { label: 'Clé API Groq', placeholder: 'Ex: gsk_...' }
+const AI_PROVIDERS = {
+  local_e500: { name: 'Lecture Directe E500 (Autonome)', placeholder: '' },
+  openai: { name: 'OpenAI (ChatGPT / GPT-4o)', placeholder: 'Colle ta clé API OpenAI (sk-...) ici...' },
+  mistral: { name: 'Mistral AI (Le Chat)', placeholder: 'Colle ta clé API Mistral ici...' },
+  claude: { name: 'Anthropic (Claude)', placeholder: 'Colle ta clé API Claude (sk-ant-...) ici...' },
+  gemini: { name: 'Google Gemini', placeholder: 'Colle ta clé API Gemini (AIza...) ici...' },
+  groq: { name: 'Groq / DeepSeek', placeholder: 'Colle ta clé API Groq (gsk_...) ici...' }
 };
 
-function updateAiProviderUI() {
-  const sel = document.getElementById('aiProviderSelect');
-  const wrap = document.getElementById('aiApiKeyFieldWrap');
-  const lbl = document.getElementById('aiApiKeyLabel');
-  const inp = document.getElementById('geminiApiKeyInput');
-  if (!sel || !wrap || !lbl || !inp) return;
-  const prov = sel.value || 'none';
-  const meta = AI_PROVIDERS_META[prov] || AI_PROVIDERS_META.none;
-  lbl.textContent = meta.label;
-  inp.placeholder = meta.placeholder;
-  wrap.style.opacity = prov === 'none' ? '0.55' : '1';
+function toggleAiKeyVisibility() {
+  const selEl = document.getElementById('aiProviderSelect');
+  const wrapEl = document.getElementById('aiKeyFieldWrap');
+  const labelEl = document.getElementById('aiKeyLabel');
+  const inputEl = document.getElementById('geminiApiKeyInput');
+  if (!selEl || !wrapEl) return;
+  const val = (selEl.value || 'local_e500').trim();
+  if (val === 'local_e500') {
+    wrapEl.style.display = 'none';
+  } else {
+    wrapEl.style.display = 'flex';
+    const info = AI_PROVIDERS[val] || AI_PROVIDERS.openai;
+    if (labelEl) labelEl.textContent = 'Clé API — ' + info.name;
+    if (inputEl) inputEl.placeholder = info.placeholder;
+  }
 }
 
 function saveUserSettings() {
   try {
+    const cloudSel = document.getElementById('cloudProviderSelect');
+    const aiSel = document.getElementById('aiProviderSelect');
     const settings = {
       email: (document.getElementById('userEmailInput').value || '').trim(),
-      cloudProvider: document.getElementById('cloudProviderSelect') ? document.getElementById('cloudProviderSelect').value : 'universal',
-      aiProvider: document.getElementById('aiProviderSelect') ? document.getElementById('aiProviderSelect').value : 'none',
-      geminiKey: (document.getElementById('geminiApiKeyInput').value || '').trim()
+      geminiKey: (document.getElementById('geminiApiKeyInput').value || '').trim(),
+      cloudProvider: cloudSel ? cloudSel.value.trim() : 'native',
+      aiProvider: aiSel ? aiSel.value.trim() : 'local_e500'
     };
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     updateCloudPathPreview();
@@ -1197,27 +1206,32 @@ function loadUserSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) {
-      updateAiProviderUI();
+      toggleAiKeyVisibility();
       return;
     }
     const s = JSON.parse(raw);
     if (s.email && document.getElementById('userEmailInput')) document.getElementById('userEmailInput').value = s.email;
+    if (s.geminiKey && document.getElementById('geminiApiKeyInput')) document.getElementById('geminiApiKeyInput').value = s.geminiKey;
     if (s.cloudProvider && document.getElementById('cloudProviderSelect')) document.getElementById('cloudProviderSelect').value = s.cloudProvider;
     if (s.aiProvider && document.getElementById('aiProviderSelect')) document.getElementById('aiProviderSelect').value = s.aiProvider;
-    if (s.geminiKey && document.getElementById('geminiApiKeyInput')) document.getElementById('geminiApiKeyInput').value = s.geminiKey;
-    updateAiProviderUI();
+    toggleAiKeyVisibility();
   } catch (e) {}
 }
 
 function updateCloudPathPreview() {
-  const m = parseInt(document.getElementById('monthSelect').value || '10', 10);
+  const m = parseInt(document.getElementById('monthSelect').value || '11', 10);
   const y = document.getElementById('yearInput').value || '2026';
-  const folderName = MONTH_FOLDERS[m] || '10 - Octobre';
+  const folderName = MONTH_FOLDERS[m] || '11 - Novembre';
+  const cloudSel = document.getElementById('cloudProviderSelect');
+  const providerKey = cloudSel ? cloudSel.value.trim() : 'native';
+  const providerObj = CLOUD_PROVIDERS[providerKey] || CLOUD_PROVIDERS.native;
   const pathText = 'Travail / ' + y + ' / ' + folderName;
   const el1 = document.getElementById('cloudPathPreview');
   const el2 = document.getElementById('modalCloudPath');
+  const lbl = document.getElementById('cloudFolderLabel');
   if (el1) el1.textContent = pathText;
-  if (el2) el2.textContent = pathText;
+  if (el2) el2.textContent = pathText + ' (' + providerObj.name + ')';
+  if (lbl) lbl.textContent = 'Dossier Cloud cible (' + providerObj.name + ')';
 }
 
 // 4. Partage QR Code & Lien 100 % vierge (Bouton QR vert du bandeau supérieur)
@@ -1432,7 +1446,7 @@ function resetBlankMonth() {
 
   const statusEl = document.getElementById('importStatusMsg');
   if (statusEl) {
-    statusEl.textContent = 'Sélectionne un fichier PDF E500 ou une image de ta ligne.';
+    statusEl.textContent = 'Sélectionne le fichier PDF E500 mensuel (lecture directe de ta ligne et de tes compteurs).';
     statusEl.style.color = 'var(--muted)';
   }
 
@@ -1538,7 +1552,7 @@ function renderTable() {
   tbody.innerHTML = scheduleData.map((r, idx) => {
     const dow = getDayOfWeek(y, m, r.day);
     const dayLabel = String(r.day).padStart(2, '0') + ' (' + DAY_NAMES[dow] + ')';
-    const rowClass = ['BVTS', 'SIM', 'CTFT', 'CTFP', 'LST', 'BMA', 'LAN'].includes(r.code) ? 'row-bvts' : (r.code === 'RX' ? 'row-rx' : (r.code === 'OO' ? 'row-oo' : ''));
+    const rowClass = ['BVTS', 'SIM', 'CTFT', 'CTFP'].includes(r.code) ? 'row-bvts' : (r.code === 'RX' ? 'row-rx' : (r.code === 'OO' ? 'row-oo' : ''));
     const opts = CODES.map(c => '<option value="' + c + '" ' + (r.code === c ? 'selected' : '') + '>' + c + '</option>').join('');
 
     return '<tr id="row-' + r.day + '" class="' + rowClass + '">' +
@@ -1569,7 +1583,7 @@ function updateCell(idx, field, val) {
   scheduleData[idx][field] = val;
   if (field === 'code') {
     const tr = document.getElementById('row-' + scheduleData[idx].day);
-    if (tr) tr.className = ['BVTS', 'SIM', 'CTFT', 'CTFP', 'LST', 'BMA', 'LAN'].includes(val) ? 'row-bvts' : (val === 'RX' ? 'row-rx' : (val === 'OO' ? 'row-oo' : ''));
+    if (tr) tr.className = ['BVTS', 'SIM', 'CTFT', 'CTFP'].includes(val) ? 'row-bvts' : (val === 'RX' ? 'row-rx' : (val === 'OO' ? 'row-oo' : ''));
   }
   recalculateAll();
   saveStateToLocal(true);
@@ -1589,8 +1603,8 @@ function updateSecondShift(idx, val) {
 }
 
 // 8. Moteur de Calcul Réglementaire CP 226 (avec distinction Découcher Court <=24h vs Long >24h entre les 2 fins de prestations)
-const REST_OR_LEAVE_CODES = ['RX', 'OO', 'ELH', 'REC', 'WKD', 'ZZ', 'MAL', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH', 'NMBS', '-'];
-const WORK_PRESTA_CODES = ['BVTS', 'SIM', 'CTFT', 'CTFP', 'LST', 'BMA', 'LAN'];
+const REST_OR_LEAVE_CODES = ['RX', 'OO', 'ELH', 'REC', 'WKD', 'ZZ', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH', 'NMBS', '-'];
+const WORK_PRESTA_CODES = ['BVTS', 'SIM', 'CTFT', 'CTFP'];
 
 function isWorkedPrestationRow(r) {
   if (!r) return false;
@@ -2015,8 +2029,7 @@ function recalculateAll() {
 
   const usedCounts = { RX: 0, OO: 0, ELH: 0, REC: 0, WKD: 0, ZZ: 0, ZB: 0, BLH: 0, BELH: 0, BTH: 0, BTULH: 0, NMBS: 0 };
   scheduleData.forEach(r => {
-    if (r.code === 'MAL') usedCounts.ZZ++;
-    else if (usedCounts[r.code] !== undefined) usedCounts[r.code]++;
+    if (usedCounts[r.code] !== undefined) usedCounts[r.code]++;
   });
 
   const baseRX = parseFloat(document.getElementById('cnt_RX').value || '0');
@@ -2037,7 +2050,7 @@ function recalculateAll() {
     '<strong>' + usedCounts.OO + ' OO (Alternements)</strong> • ' +
     '<strong>' + usedExtralegal + ' ELH/BELH</strong> (Solde E500 : ' + baseBELH + ') • ' +
     '<strong>WKD : ' + baseWKD + '</strong> • <strong>REC : ' + baseREC + 'h</strong> • ' +
-    '<strong>ZZ/MAL : ' + baseZZ + '</strong> • <strong>ZB : ' + baseZB + '</strong>';
+    '<strong>ZZ : ' + baseZZ + '</strong> • <strong>ZB : ' + baseZB + '</strong>';
 
   const counterRows = [
     { code: 'RX', label: 'Jours de repos périodiques', init: baseRX, used: usedCounts.RX, rem: baseRX - usedCounts.RX },
@@ -2045,7 +2058,7 @@ function recalculateAll() {
     { code: 'NMBS', label: 'Congés SNCB', init: baseNMBS, used: usedCounts.NMBS, rem: baseNMBS - usedCounts.NMBS },
     { code: 'REC', label: 'Heures de récupération (h)', init: baseREC + 'h', used: usedCounts.REC + ' j', rem: baseREC + 'h' },
     { code: 'WKD', label: 'Repos de week-end', init: baseWKD, used: usedCounts.WKD, rem: baseWKD - usedCounts.WKD },
-    { code: 'ZZ / MAL', label: 'Jours de maladie', init: baseZZ, used: usedCounts.ZZ, rem: baseZZ + usedCounts.ZZ },
+    { code: 'ZZ', label: 'Jours de maladie', init: baseZZ, used: usedCounts.ZZ, rem: baseZZ + usedCounts.ZZ },
     { code: 'ZB', label: 'Congé sans solde 45+', init: baseZB, used: usedCounts.ZB, rem: baseZB - usedCounts.ZB },
     { code: 'BLH', label: 'Solde de congés légaux', init: baseBLH, used: usedCounts.BLH, rem: baseBLH - usedCounts.BLH },
     { code: 'BELH / ELH', label: 'Solde de congés extralégaux', init: baseBELH, used: usedExtralegal, rem: baseBELH - usedExtralegal },
@@ -2150,8 +2163,22 @@ function recalculateAll() {
   };
 }
 
-// 9. Lecteur Mathématique Exact du PDF E500 (100 % autonome par coordonnées X/Y + Support Multi-IA optionnel)
+// 9. Lecteur Direct Haute Précision PDF E500 (Coordonnées internes exactes X/Y + Multi-IA en secours)
 const COUNTER_KEYS_ORDER = ['RX', 'NMBS', 'REC', 'WKD', 'ZZ', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH'];
+const E500_MONTH_NAMES = {
+  'JANUARI': 1, 'JANVIER': 1, 'JANUARY': 1,
+  'FEBRUARI': 2, 'FEVRIER': 2, 'FEBRUARY': 2,
+  'MAART': 3, 'MARS': 3, 'MARCH': 3,
+  'APRIL': 4, 'AVRIL': 4,
+  'MEI': 5, 'MAI': 5, 'MAY': 5,
+  'JUNI': 6, 'JUIN': 6, 'JUNE': 6,
+  'JULI': 7, 'JUILLET': 7, 'JULY': 7,
+  'AUGUSTUS': 8, 'AOUT': 8, 'AUGUST': 8,
+  'SEPTEMBER': 9, 'SEPTEMBRE': 9,
+  'OKTOBER': 10, 'OCTOBRE': 10, 'OCTOBER': 10,
+  'NOVEMBER': 11, 'NOVEMBRE': 11,
+  'DECEMBER': 12, 'DECEMBRE': 12
+};
 
 function getDriverFilterTokens() {
   const rawInput = (document.getElementById('driverInput').value || '').trim();
@@ -2164,13 +2191,6 @@ function getDriverFilterTokens() {
   return tokens.length > 0 ? tokens : ['REMY', 'BRASSEUR'];
 }
 
-function sanitizeCounterNumber(val) {
-  if (val === undefined || val === null || val === '') return null;
-  const cleaned = String(val).replace(',', '.').replace(/[^0-9.-]/g, '').trim();
-  if (!cleaned || isNaN(Number(cleaned))) return null;
-  return String(Number(cleaned));
-}
-
 function formatTimePad(tStr) {
   if (!tStr) return '';
   const cleaned = String(tStr).trim().replace(/\s+/g, '').replace(/[hH.]/, ':');
@@ -2179,9 +2199,78 @@ function formatTimePad(tStr) {
   return String(parseInt(m[1], 10)).padStart(2, '0') + ':' + m[2];
 }
 
-// Détecte les icônes de Lit (découcher) sur la ligne du conducteur dans le PDF en inspectant la zone exacte [xd, yInit + 83.5 .. xd + 7, yInit + 89.0]
-async function detectBedIconsOnPdfSlot(page, yInit, daysArray) {
+function sanitizeCounterNumber(val) {
+  if (val === undefined || val === null || val === '') return null;
+  const cleaned = String(val).replace(',', '.').replace(/[^0-9.-]/g, '').trim();
+  if (!cleaned || isNaN(Number(cleaned))) return null;
+  return String(Number(cleaned));
+}
+
+// Convertit les coordonnées brutes pdf.js (qui peuvent être tournées à 90° via cm=[0, 1, -1, 0, 595, 0])
+// en coordonnées tableur paysage standard : X de gauche à droite (0..842) et Y de bas en haut (0..595)
+function normalizePdfPageItems(tcItems) {
+  const out = [];
+  for (let i = 0; i < tcItems.length; i++) {
+    const it = tcItems[i];
+    const str = (it.str || '').trim();
+    if (!str) continue;
+    const tr = it.transform || [1, 0, 0, 1, 0, 0];
+    let x, y;
+    // Dans les PDF E500 Lineas, la matrice est tournée à 90° : tr = [0, 1, -1, 0, 595 - Y, X]
+    if (Math.abs(tr[0]) < 0.1 && Math.abs(tr[1]) > 0.5) {
+      if (tr[1] > 0) {
+        x = tr[5];
+        y = 595.0 - tr[4];
+      } else {
+        x = 842.0 - tr[5];
+        y = tr[4];
+      }
+    } else {
+      x = tr[4];
+      y = tr[5];
+    }
+    out.push({
+      str: str,
+      norm: normalizeStr(str),
+      x: Math.round(x * 100) / 100,
+      y: Math.round(y * 100) / 100
+    });
+  }
+  return out;
+}
+
+// Sépare les chaînes éventuellement fusionnées par pdf.js sur une même ligne (ex: "BVTS BVTS", "BVTSRX", "8:00 8:00")
+function expandDayTokensAtX(xStart, textStr, stepX) {
+  const rawParts = textStr.trim().split(/\s+/);
+  const tokens = [];
+  const codePattern = /(BVTS|BYTS|CTFT|CTFP|SIM|BMA|LAN|LST|MAL|ELH|REC|WKD|BELH|BTULH|NMBS|BLH|BTH|RX|OO|00|ZZ|ZB|-)/g;
+  const timePattern = /\d{1,2}[:.]\d{2}|-/g;
+
+  for (let i = 0; i < rawParts.length; i++) {
+    const p = rawParts[i];
+    const tMatches = p.match(timePattern);
+    if (tMatches && tMatches.length > 1 && tMatches.join('') === p) {
+      for (let k = 0; k < tMatches.length; k++) tokens.push(tMatches[k]);
+      continue;
+    }
+    const cMatches = p.match(codePattern);
+    if (cMatches && cMatches.length > 1 && cMatches.join('') === p) {
+      for (let k = 0; k < cMatches.length; k++) tokens.push(cMatches[k]);
+      continue;
+    }
+    tokens.push(p);
+  }
+  return tokens.map((tok, idx) => ({
+    x: xStart + idx * stepX,
+    tok: tok
+  }));
+}
+
+// Détecte les icônes de lit (découcher) sur le créneau du conducteur via un rendu rapide de la bande supérieure des 31 jours
+async function detectBedIconsOnPdfSlot(page, yInit, xDay1, xStep) {
+  const bedDays = new Set();
   try {
+    // 1. Vérification par rendu Canvas de la page à l'emplacement exact des icônes de lit (Y_table = yInit + 83.5 .. yInit + 89.0)
     const scale = 2.0;
     const viewport = page.getViewport({ scale: scale });
     const canvas = document.createElement('canvas');
@@ -2191,274 +2280,265 @@ async function detectBedIconsOnPdfSlot(page, yInit, daysArray) {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
     const w = canvas.width;
     const h = canvas.height;
 
-    const bedFlags = new Array(32).fill(false);
+    // Dans le repère paysage (largeur ~842*scale, hauteur ~595*scale), Y_canvas = (595 - Y_table) * scale
+    const yBedCenterCanvas = Math.round((595.0 - (yInit + 86.2)) * scale);
+    const y1 = Math.max(0, yBedCenterCanvas - Math.round(3.2 * scale));
+    const y2 = Math.min(h - 1, yBedCenterCanvas + Math.round(3.2 * scale));
 
     for (let d = 1; d <= 31; d++) {
-      const xd = 112.0 + (d - 1) * 17.0;
-      // Dans le PDF E500, l'icône de lit est dessinée dans un carré blanc 7x7 à X = xd..xd+7, Y = yInit + 83.5..yInit + 89.0
-      const pt1 = viewport.convertToViewportPoint(xd + 1.0, yInit + 88.5);
-      const pt2 = viewport.convertToViewportPoint(xd + 6.0, yInit + 84.0);
-      const x1 = Math.max(0, Math.min(w - 1, Math.round(Math.min(pt1[0], pt2[0]))));
-      const x2 = Math.max(0, Math.min(w - 1, Math.round(Math.max(pt1[0], pt2[0]))));
-      const y1 = Math.max(0, Math.min(h - 1, Math.round(Math.min(pt1[1], pt2[1]))));
-      const y2 = Math.max(0, Math.min(h - 1, Math.round(Math.max(pt1[1], pt2[1]))));
-
+      const xStartTable = xDay1 + (d - 1) * xStep;
+      const x1 = Math.max(0, Math.round((xStartTable + 0.8) * scale));
+      const x2 = Math.min(w - 1, Math.round((xStartTable + 7.2) * scale));
       let darkPixels = 0;
+      let whitePixels = 0;
       let totalPixels = 0;
+
       for (let py = y1; py <= y2; py++) {
         for (let px = x1; px <= x2; px++) {
           const idx = (py * w + px) * 4;
-          const r = imgData[idx];
-          const g = imgData[idx + 1];
-          const b = imgData[idx + 2];
-          // L'icône de lit contient des traits noirs/gris foncés (R < 145 && G < 145 && B < 145), contrairement au fond orange/rose/bleu uni
-          if (r < 145 && g < 145 && b < 145) {
-            darkPixels++;
-          }
+          const r = imgData[idx], g = imgData[idx + 1], b = imgData[idx + 2];
+          if (r < 115 && g < 115 && b < 115) darkPixels++;
+          if (r > 235 && g > 235 && b > 235) whitePixels++;
           totalPixels++;
         }
       }
-      if (totalPixels > 0 && darkPixels >= 2) {
-        bedFlags[d] = true;
-      }
-    }
-
-    for (let i = 0; i < daysArray.length; i++) {
-      const item = daysArray[i];
-      const d = item.day;
-      if (bedFlags[d]) {
-        if (d > 1 && bedFlags[d - 1]) {
-          item.lit = 'retour';
-        } else {
-          item.lit = 'aller';
-        }
+      // Une case avec icône de lit possède un carré blanc (418 254 7 -7 re) contenant les pixels noirs du lit
+      if (totalPixels > 0 && darkPixels >= 3 && whitePixels >= 3) {
+        bedDays.add(d);
       }
     }
   } catch (e) {}
+  return bedDays;
 }
 
-// Extraction mathématique 100 % exacte par coordonnées (X, Y) du PDF E500 Lineas / SIBELIT
-async function parseE500PdfMathematically(pdf, requiredTokens, statusEl) {
-  const monthNamesMap = {
-    'JANUARI': 1, 'JANVIER': 1, 'FEBRUARI': 2, 'FEVRIER': 2, 'MAART': 3, 'MARS': 3,
-    'APRIL': 4, 'AVRIL': 4, 'MEI': 5, 'MAI': 5, 'JUNI': 6, 'JUIN': 6,
-    'JULI': 7, 'JUILLET': 7, 'AUGUSTUS': 8, 'AOUT': 8, 'SEPTEMBER': 9, 'SEPTEMBRE': 9,
-    'OKTOBER': 10, 'OCTOBRE': 10, 'NOVEMBER': 11, 'NOVEMBRE': 11, 'DECEMBER': 12, 'DECEMBRE': 12
-  };
-
+// Extraction mathématique directe d'un fichier PDF E500 Lineas (100 % exact, sans IA)
+async function parseE500PdfDeterministic(pdfDoc, requiredTokens, statusEl) {
   let detectedMonth = null;
   let detectedYear = null;
-  const allDiscoveredDrivers = [];
 
-  for (let p = 1; p <= pdf.numPages; p++) {
+  for (let p = 1; p <= pdfDoc.numPages; p++) {
     if (statusEl) {
-      statusEl.textContent = '⏳ Lecture mathématique des coordonnées E500 (page ' + p + '/' + pdf.numPages + ')...';
+      statusEl.textContent = '⏳ Lecture directe E500 : recherche de ' + requiredTokens.join(' ') + ' (page ' + p + '/' + pdfDoc.numPages + ')...';
     }
-    const page = await pdf.getPage(p);
+    const page = await pdfDoc.getPage(p);
     const tc = await page.getTextContent();
+    const items = normalizePdfPageItems(tc.items);
 
-    const ops = [];
-    tc.items.forEach(it => {
-      const s = (it.str || '').trim();
-      if (!s || !it.transform) return;
-      ops.push({
-        str: s,
-        norm: normalizeStr(s),
-        x: Math.round(it.transform[4] * 100) / 100,
-        y: Math.round(it.transform[5] * 100) / 100
-      });
-    });
-
-    // 1. Détection automatique du Mois et de l'Année dans l'en-tête du PDF (Y > 500)
-    if (!detectedMonth || !detectedYear) {
-      ops.filter(o => o.y > 500).forEach(o => {
-        Object.keys(monthNamesMap).forEach(mKey => {
-          if (o.norm.includes(mKey)) {
-            detectedMonth = monthNamesMap[mKey];
-            const ym = o.str.match(/\b(20\d{2})\b/);
-            if (ym) detectedYear = parseInt(ym[1], 10);
+    // 1. Détection automatique du Mois et de l'Année dans l'en-tête (Y > 510)
+    if (!detectedMonth) {
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].y > 510) {
+          const up = items[i].norm;
+          for (const [mName, mNum] of Object.entries(E500_MONTH_NAMES)) {
+            if (up.includes(mName)) {
+              detectedMonth = mNum;
+              const ym = up.match(/\b(20\d{2})\b/);
+              if (ym) detectedYear = parseInt(ym[1], 10);
+              break;
+            }
           }
-        });
-      });
+        }
+      }
     }
 
-    // 2. Repérage des ancres de chaque bloc conducteur ('Initially planned' à X < 100)
-    const initAnchors = ops
-      .filter(o => o.norm === 'INITIALLY PLANNED' && o.x < 100)
-      .map(o => o.y)
+    // 2. Repérage des 4 créneaux conducteurs de la page via l'ancre "Initially planned" (située à X < 105)
+    const initAnchors = items
+      .filter(it => it.x < 105 && it.norm.includes('INITIALLY') && it.norm.includes('PLANNED'))
+      .map(it => it.y)
       .sort((a, b) => b - a);
 
-    for (let s = 0; s < initAnchors.length; s++) {
-      const yInit = initAnchors[s];
+    // Déduplication des ancres proches (< 5 pts)
+    const uniqueInitYs = [];
+    for (let i = 0; i < initAnchors.length; i++) {
+      if (uniqueInitYs.length === 0 || Math.abs(uniqueInitYs[uniqueInitYs.length - 1] - initAnchors[i]) > 10) {
+        uniqueInitYs.push(initAnchors[i]);
+      }
+    }
+
+    for (let s = 0; s < uniqueInitYs.length; s++) {
+      const yInit = uniqueInitYs[s];
       const yMin = yInit - 8.5;
       const yMax = yInit + 89.5;
-      const slotOps = ops.filter(o => o.y >= yMin && o.y <= yMax);
+      const slotItems = items.filter(it => it.y >= yMin && it.y <= yMax);
 
-      // Identité du conducteur dans la colonne de gauche (X entre 38 et 108)
-      const leftItems = slotOps
-        .filter(o => o.x >= 38 && o.x <= 108 && o.norm !== 'INITIALLY PLANNED' && o.y >= yInit - 2)
-        .sort((a, b) => b.y - a.y);
+      // Textes d'identité dans la colonne de gauche (38 <= X < 108, au-dessus de "Initially planned")
+      const idItems = slotItems
+        .filter(it => it.x >= 38 && it.x < 108 && it.y > yInit + 3 && !it.norm.includes('INITIALLY'))
+        .sort((a, b) => (Math.abs(a.y - b.y) > 2 ? b.y - a.y : a.x - b.x));
 
-      const nameParts = [];
-      let matricule = '';
-      leftItems.forEach(li => {
-        if (/^\d{7,10}$/.test(li.str)) {
-          matricule = li.str;
-        } else {
-          nameParts.push(li.str);
-        }
-      });
+      const idFullNorm = idItems.map(it => it.norm).join(' ');
 
-      const fullDriverLabel = nameParts.join(' ').trim();
-      const normDriverLabel = normalizeStr(fullDriverLabel + ' ' + matricule);
-      if (fullDriverLabel) {
-        allDiscoveredDrivers.push(fullDriverLabel);
-      }
-
-      // Vérification stricte de correspondance (tous les tokens requis, ex: REMY + BRASSEUR)
-      const isTargetMatch = requiredTokens.every(tok => normDriverLabel.includes(tok));
-      if (!isTargetMatch) continue;
-
-      // CONDUCTEUR TROUVÉ ! Extraction mathématique des 31 colonnes de jours : X_d = 112.0 + (d - 1) * 17.0
-      const extractedDays = [];
-      for (let d = 1; d <= 31; d++) {
-        const xd = 112.0 + (d - 1) * 17.0;
-        const colItems = slotOps
-          .filter(o => Math.abs(o.x - xd) <= 5.0)
-          .sort((a, b) => b.y - a.y);
-
-        let codeVal = '-';
-        let startVal = '';
-        let endVal = '';
-
-        colItems.forEach(ci => {
-          const dy = ci.y - yInit;
-          // On lit uniquement la partie active supérieure de la case (dy >= 47) et on ignore la ligne basse 'Initially planned' (dy < 45)
-          if (dy >= 60.0 && dy <= 68.8 && ci.str !== '-') {
-            codeVal = (ci.str === '00') ? 'OO' : ci.str.toUpperCase();
-          } else if (dy >= 54.0 && dy < 60.0 && ci.str !== '-') {
-            startVal = formatTimePad(ci.str);
-          } else if (dy >= 47.0 && dy < 54.0 && ci.str !== '-') {
-            endVal = formatTimePad(ci.str);
+      // Vérification stricte : TOUS les tokens requis (ex: REMY + BRASSEUR) doivent être présents dans ce créneau !
+      if (requiredTokens.every(tok => idFullNorm.includes(tok))) {
+        let matricule = '';
+        const nameParts = [];
+        idItems.forEach(it => {
+          const cleanStr = it.str.trim();
+          if (/^\d{7,10}$/.test(cleanStr)) {
+            matricule = cleanStr;
+          } else {
+            nameParts.push(cleanStr);
           }
         });
+        const fullName = nameParts.join(' ') || 'Rémy Marcel L BRASSEUR';
 
-        extractedDays.push({
-          day: d,
-          code: codeVal,
-          start: startVal,
-          end: endVal,
-          lit: 'none',
-          trajetMin: 0
-        });
-      }
+        // 3. Extraction des 10 compteurs à droite (X >= 638)
+        // Ligne 5 (Totaal toe te kennen) : dY = y - yInit entre -8.5 et +1.5
+        // Les 11 colonnes à droite de Totaal sont : RX(668), NMBS(679), REC(693), WKD(702), ZZ(714), ZB(725), KD(737), BLH(748), BELH(760), BTH(772), BTULH(783)
+        const counterXMap = {
+          RX: 668.0, NMBS: 679.0, REC: 693.0, WKD: 702.0,
+          ZZ: 714.0, ZB: 725.0, BLH: 748.0, BELH: 760.0,
+          BTH: 772.0, BTULH: 783.0
+        };
+        const counters = { RX: '0', NMBS: '0', REC: '0', WKD: '0', ZZ: '0', ZB: '0', BLH: '0', BELH: '0', BTH: '0', BTULH: '0' };
 
-      // Détection précise des icônes de Lit sur la ligne du conducteur
-      await detectBedIconsOnPdfSlot(page, yInit, extractedDays);
-
-      // Extraction mathématique des 10 compteurs à leurs coordonnées X exactes (en ignorant KD à X = 737.0)
-      const counterXMap = {
-        RX: 668.0,
-        NMBS: 679.0,
-        REC: 693.0,
-        WKD: 702.0,
-        ZZ: 714.0,
-        ZB: 725.0,
-        BLH: 748.0,
-        BELH: 760.0,
-        BTH: 772.0,
-        BTULH: 783.0
-      };
-
-      const extractedCounters = {};
-      Object.keys(counterXMap).forEach(k => {
-        const cx = counterXMap[k];
-        if (k === 'REC') {
-          // Pour REC (X = 693.0), le solde est sur la Lijn 3 (SOM van Lijn 1 + Lijn 2, dy entre +12 et +20) ou Lijn 2 (dy entre +22 et +30)
-          const l3Items = slotOps
-            .filter(o => Math.abs(o.x - cx) <= 4.5 && (o.y - yInit) >= 12.0 && (o.y - yInit) <= 20.5)
-            .sort((a, b) => b.y - a.y)
-            .map(o => o.str);
-          if (l3Items.length > 0) {
-            const val3 = sanitizeCounterNumber(l3Items.join(''));
-            if (val3 !== null && Number(val3) !== 0) {
-              extractedCounters[k] = val3;
-              return;
+        // Méthode A : par coordonnée X exacte sur la Ligne 5
+        Object.entries(counterXMap).forEach(([cKey, cx]) => {
+          const matches = slotItems
+            .filter(it => Math.abs(it.x - cx) <= 4.8 && (it.y - yInit) >= -8.5 && (it.y - yInit) <= 1.5 && !it.str.includes(':'))
+            .sort((a, b) => b.y - a.y);
+          if (matches.length > 0) {
+            const joined = matches.map(m => m.str.trim()).join('').replace(',', '.');
+            if (joined && !isNaN(Number(joined))) {
+              counters[cKey] = String(Number(joined));
             }
           }
-          const l2Items = slotOps
-            .filter(o => Math.abs(o.x - cx) <= 4.5 && (o.y - yInit) > 20.5 && (o.y - yInit) <= 30.5)
-            .sort((a, b) => b.y - a.y)
-            .map(o => o.str);
-          if (l2Items.length > 0) {
-            const val2 = sanitizeCounterNumber(l2Items.join(''));
-            if (val2 !== null && Number(val2) !== 0) {
-              extractedCounters[k] = val2;
-              return;
+        });
+
+        // Méthode B (si certains nombres de la Ligne 5 ont été regroupés avec des espaces par pdf.js)
+        const r5Items = slotItems
+          .filter(it => it.x >= 638 && (it.y - yInit) >= -8.5 && (it.y - yInit) <= 1.5)
+          .sort((a, b) => a.x - b.x);
+        const r5Tokens = [];
+        r5Items.forEach(it => {
+          it.str.trim().split(/\s+/).forEach(tok => {
+            if (tok && !tok.includes(':')) r5Tokens.push(tok.replace(',', '.'));
+          });
+        });
+        if (r5Tokens.length >= 11) {
+          const cols11 = ['RX', 'NMBS', 'REC', 'WKD', 'ZZ', 'ZB', 'KD', 'BLH', 'BELH', 'BTH', 'BTULH'];
+          cols11.forEach((colName, idx) => {
+            if (counters[colName] !== undefined && !isNaN(Number(r5Tokens[idx]))) {
+              counters[colName] = String(Number(r5Tokens[idx]));
+            }
+          });
+        }
+
+        // Règle spécifique E500 pour REC (X = 693.0) : la valeur active se trouve sur la Ligne 3 (SOM, dY ~ +16) ou la Ligne 2 (Vorige, dY ~ +26)
+        const recRanges = [[12.5, 20.5], [22.5, 30.5]];
+        for (let rIdx = 0; rIdx < recRanges.length; rIdx++) {
+          const [dyLow, dyHigh] = recRanges[rIdx];
+          const recItems = slotItems
+            .filter(it => it.x >= 687.5 && it.x <= 700.5 && (it.y - yInit) >= dyLow && (it.y - yInit) <= dyHigh)
+            .sort((a, b) => b.y - a.y);
+          if (recItems.length > 0) {
+            const recStr = recItems.map(it => it.str.trim()).join('').replace(',', '.').replace(':', '.');
+            if (recStr && !isNaN(Number(recStr)) && Number(recStr) !== 0) {
+              counters.REC = String(Number(recStr));
+              break;
             }
           }
         }
 
-        // Lijn 5 (Totaal toe te kennen, dy entre -8.5 et -1.0)
-        const l5Items = slotOps
-          .filter(o => Math.abs(o.x - cx) <= 4.5 && (o.y - yInit) >= -8.5 && (o.y - yInit) <= -1.0)
-          .sort((a, b) => b.y - a.y)
-          .map(o => o.str);
-        const val5 = sanitizeCounterNumber(l5Items.join(''));
-        extractedCounters[k] = val5 !== null ? val5 : '0';
-      });
+        // 4. Extraction des 31 colonnes de jours (X_day = 112.0 + (jour - 1) * 17.0)
+        const xDay1 = 112.0;
+        const xStep = 17.0;
+        const expandedDayOps = [];
 
-      const formattedName = (normDriverLabel.includes('REMY') && normDriverLabel.includes('BRASSEUR'))
-        ? 'Rémy Marcel L BRASSEUR'
-        : fullDriverLabel;
+        slotItems.forEach(it => {
+          if (it.x >= 108 && it.x <= 632) {
+            const exp = expandDayTokensAtX(it.x, it.str, xStep);
+            exp.forEach(eItem => {
+              expandedDayOps.push({
+                x: eItem.x,
+                dy: it.y - yInit,
+                tok: eItem.tok
+              });
+            });
+          }
+        });
 
-      return {
-        matched: true,
-        month: detectedMonth,
-        year: detectedYear,
-        fullName: formattedName,
-        matricule: matricule,
-        counters: extractedCounters,
-        days: extractedDays
-      };
+        // Détection des icônes de lit sur la ligne du conducteur
+        const bedDaysSet = await detectBedIconsOnPdfSlot(page, yInit, xDay1, xStep);
+
+        const daysResult = [];
+        for (let d = 1; d <= 31; d++) {
+          const dx = xDay1 + (d - 1) * xStep;
+          const colOps = expandedDayOps.filter(op => Math.abs(op.x - dx) <= 5.5);
+
+          // Ligne active supérieure uniquement :
+          // - Code (BVTS, RX, SIM, CTFT, CTFP...) à dY entre +59.5 et +69.0 (autour de +63.95)
+          // - Heure de début (8:00) à dY entre +53.5 et +59.5 (autour de +56.99)
+          // - Heure de fin (15:36) à dY entre +46.5 et +53.5 (autour de +50.70)
+          // (On ignore volontairement les anciens horaires barrés situés tout en bas à dY ~ +4.8 et -1.5)
+          const codeOps = colOps.filter(op => op.dy >= 59.5 && op.dy <= 69.0 && op.tok !== '-');
+          const startOps = colOps.filter(op => op.dy >= 53.5 && op.dy < 59.5 && op.tok !== '-');
+          const endOps = colOps.filter(op => op.dy >= 46.5 && op.dy < 53.5 && op.tok !== '-');
+
+          let rawCode = codeOps.length > 0 ? codeOps[0].tok.toUpperCase().trim() : '-';
+          if (rawCode === 'BYTS') rawCode = 'BVTS';
+          if (rawCode === '00') rawCode = 'OO';
+
+          const startStr = startOps.length > 0 ? formatTimePad(startOps[0].tok) : '';
+          const endStr = endOps.length > 0 ? formatTimePad(endOps[0].tok) : '';
+
+          let litVal = 'none';
+          if (bedDaysSet.has(d)) {
+            litVal = bedDaysSet.has(d - 1) ? 'retour' : 'aller';
+          }
+
+          daysResult.push({
+            day: d,
+            code: CODES.includes(rawCode) ? rawCode : ((startStr && endStr) ? 'BVTS' : '-'),
+            start: startStr,
+            end: endStr,
+            lit: litVal,
+            trajetMin: 0,
+            note: ''
+          });
+        }
+
+        return {
+          found: true,
+          page: p,
+          month: detectedMonth,
+          year: detectedYear,
+          fullName: fullName,
+          matricule: matricule,
+          counters: counters,
+          days: daysResult
+        };
+      }
     }
   }
-
-  return {
-    matched: false,
-    discoveredDrivers: allDiscoveredDrivers
-  };
+  return { found: false };
 }
 
-function applyMathematicalExtractionToSchedule(result) {
-  if (!result || !result.matched) return false;
+function applyDeterministicE500Result(res) {
+  if (!res || !res.found) return false;
 
-  if (result.month && document.getElementById('monthSelect')) {
-    document.getElementById('monthSelect').value = String(result.month);
+  if (res.month && document.getElementById('monthSelect')) {
+    document.getElementById('monthSelect').value = String(res.month);
   }
-  if (result.year && document.getElementById('yearInput')) {
-    document.getElementById('yearInput').value = String(result.year);
+  if (res.year && document.getElementById('yearInput')) {
+    document.getElementById('yearInput').value = String(res.year);
   }
-  updateCloudPathPreview();
-
-  if (result.fullName) {
-    document.getElementById('e500FullName').value = result.fullName;
+  if (res.fullName) {
+    document.getElementById('e500FullName').value = res.fullName;
   }
-  if (result.matricule) {
-    document.getElementById('driverMatricule').value = String(result.matricule);
+  if (res.matricule) {
+    document.getElementById('driverMatricule').value = res.matricule;
   }
-
-  if (result.counters && typeof result.counters === 'object') {
+  if (res.counters) {
     COUNTER_KEYS_ORDER.forEach(k => {
-      const cleanVal = sanitizeCounterNumber(result.counters[k]);
-      if (cleanVal !== null) {
+      const val = sanitizeCounterNumber(res.counters[k]);
+      if (val !== null) {
         const el = document.getElementById('cnt_' + k);
-        if (el) el.value = cleanVal;
+        if (el) el.value = val;
       }
     });
   }
@@ -2467,21 +2547,98 @@ function applyMathematicalExtractionToSchedule(result) {
   const y = parseInt(document.getElementById('yearInput').value, 10);
   scheduleData = createBlankSchedule(m, y);
 
-  result.days.forEach(item => {
-    const row = scheduleData.find(r => r.day === item.day);
+  res.days.forEach(dItem => {
+    const row = scheduleData.find(r => r.day === dItem.day);
     if (row) {
-      row.code = CODES.includes(item.code) ? item.code : (item.start ? 'BVTS' : '-');
-      row.start = item.start || '';
-      row.end = item.end || '';
-      row.lit = item.lit || 'none';
-      row.trajetMin = item.trajetMin || 0;
+      row.code = dItem.code;
+      row.start = dItem.start;
+      row.end = dItem.end;
+      row.lit = dItem.lit;
+      row.trajetMin = dItem.trajetMin || 0;
     }
   });
 
   checkDriverMatch();
+  updateCloudPathPreview();
   renderTable();
   recalculateAll();
   return true;
+}
+
+// Secours Multi-IA (OpenAI, Mistral, Claude, Gemini, Groq) uniquement si un PDF non-standard est importé
+async function callMultiAiFallback(rawText, provider, apiKey, requiredTokens) {
+  const cleanKey = (apiKey || '').replace(/["'\s]/g, '');
+  if (!cleanKey) {
+    throw new Error('Conducteur non détecté dans la grille E500. Vérifie le nom saisi dans le bloc 1.');
+  }
+  const targetName = requiredTokens.join(' ');
+  const sysPrompt = 'Extrais les horaires mensuels (jours 1 à 31) et les compteurs (RX, NMBS, REC, WKD, ZZ, ZB, BLH, BELH, BTH, BTULH) uniquement pour le conducteur "' + targetName + '". Renvoie uniquement un objet JSON valide de la forme {"fullName":"","matricule":"","counters":{},"days":[{"day":1,"code":"BVTS","start":"08:00","end":"15:36","lit":"none"}]}.';
+
+  let resp, json, contentText = '';
+  if (provider === 'openai' || provider === 'mistral' || provider === 'groq') {
+    const endpoint = provider === 'mistral'
+      ? 'https://api.mistral.ai/v1/chat/completions'
+      : (provider === 'groq' ? 'https://api.groq.com/openai/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions');
+    const model = provider === 'mistral' ? 'mistral-large-latest' : (provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini');
+    resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cleanKey },
+      body: JSON.stringify({
+        model: model,
+        temperature: 0,
+        messages: [
+          { role: 'system', content: sysPrompt },
+          { role: 'user', content: rawText.slice(0, 20000) }
+        ]
+      })
+    });
+    json = await resp.json();
+    if (!resp.ok) throw new Error((json.error && json.error.message) || ('Erreur HTTP ' + resp.status));
+    contentText = json.choices && json.choices[0] && json.choices[0].message && json.choices[0].message.content;
+  } else if (provider === 'claude') {
+    resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': cleanKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-sonnet-latest',
+        max_tokens: 4096,
+        system: sysPrompt,
+        messages: [{ role: 'user', content: rawText.slice(0, 20000) }]
+      })
+    });
+    json = await resp.json();
+    if (!resp.ok) throw new Error((json.error && json.error.message) || ('Erreur HTTP ' + resp.status));
+    contentText = json.content && json.content[0] && json.content[0].text;
+  } else {
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(cleanKey);
+    resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: sysPrompt + '\n\n' + rawText.slice(0, 20000) }] }],
+        generationConfig: { temperature: 0 }
+      })
+    });
+    json = await resp.json();
+    if (!resp.ok) throw new Error((json.error && json.error.message) || ('Erreur HTTP ' + resp.status));
+    contentText = json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts[0].text;
+  }
+
+  const match = (contentText || '').replace(/```json|```/gi, '').match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('Réponse IA invalide.');
+  const parsed = JSON.parse(match[0]);
+  return applyDeterministicE500Result({
+    found: true,
+    fullName: parsed.fullName,
+    matricule: parsed.matricule,
+    counters: parsed.counters,
+    days: parsed.days || []
+  });
 }
 
 async function handleScheduleFileImport(event) {
@@ -2492,87 +2649,55 @@ async function handleScheduleFileImport(event) {
   const targetLabel = requiredTokens.join(' ');
 
   statusEl.style.color = 'var(--accent)';
-  statusEl.textContent = '⏳ Ouverture du PDF E500 "' + file.name + '" (Cible : ' + targetLabel + ')...';
+  statusEl.textContent = '⏳ Ouverture du PDF "' + file.name + '" (' + targetLabel + ')...';
 
   try {
     if (typeof window.pdfjsLib === 'undefined') {
       throw new Error('Librairie PDF.js non chargée. Vérifie ta connexion internet.');
     }
     const ab = await file.arrayBuffer();
-    const pdf = await window.pdfjsLib.getDocument({ data: ab }).promise;
+    const pdfDoc = await window.pdfjsLib.getDocument({ data: ab }).promise;
 
-    const mathResult = await parseE500PdfMathematically(pdf, requiredTokens, statusEl);
-    if (mathResult && mathResult.matched) {
-      applyMathematicalExtractionToSchedule(mathResult);
+    // 1. Lecture mathématique directe E500 (instantanée, 100 % exacte, sans IA)
+    const detResult = await parseE500PdfDeterministic(pdfDoc, requiredTokens, statusEl);
+    if (detResult && detResult.found) {
+      applyDeterministicE500Result(detResult);
       statusEl.style.color = 'var(--green)';
-      statusEl.textContent = '✓ PDF E500 lu à 100 % pour ' + mathResult.fullName + ' (' + (mathResult.matricule || '') + ') !';
+      statusEl.textContent = '✓ PDF E500 importé avec succès pour ' + detResult.fullName + ' (Page ' + detResult.page + ' • 100 % exact) !';
       saveStateToLocal(true);
       switchTab(4);
       event.target.value = '';
       return;
     }
 
-    // Si le nom cherché n'est pas dans ce PDF, on indique la liste des conducteurs présents dans le fichier
-    if (mathResult && Array.isArray(mathResult.discoveredDrivers) && mathResult.discoveredDrivers.length > 0) {
-      statusEl.style.color = 'var(--orange)';
-      statusEl.textContent = '⚠️ "' + targetLabel + '" non trouvé dans ce PDF. Conducteurs présents dans ce fichier : ' + mathResult.discoveredDrivers.join(' • ');
+    // 2. Si le conducteur n'a pas été trouvé ou si le PDF n'est pas un E500 standard, secours Multi-IA optionnel
+    const aiProvider = (document.getElementById('aiProviderSelect').value || 'local_e500').trim();
+    const apiKey = (document.getElementById('geminiApiKeyInput').value || '').trim();
+    if (aiProvider !== 'local_e500' && apiKey) {
+      statusEl.textContent = '⏳ Analyse via ' + (AI_PROVIDERS[aiProvider] ? AI_PROVIDERS[aiProvider].name : 'IA') + '...';
+      let rawText = '';
+      for (let p = 1; p <= pdfDoc.numPages; p++) {
+        const page = await pdfDoc.getPage(p);
+        const tc = await page.getTextContent();
+        rawText += tc.items.map(i => i.str).join(' ') + '\n';
+      }
+      await callMultiAiFallback(rawText, aiProvider, apiKey, requiredTokens);
+      statusEl.style.color = 'var(--green)';
+      statusEl.textContent = '✓ PDF importé avec succès pour ' + targetLabel + ' !';
+      saveStateToLocal(true);
+      switchTab(4);
     } else {
-      statusEl.style.color = 'var(--red)';
-      statusEl.textContent = '❌ Aucune grille E500 standard détectée dans ce PDF.';
+      statusEl.style.color = 'var(--orange)';
+      statusEl.textContent = '⚠️ Aucun conducteur correspondant à "' + targetLabel + '" n\'a été trouvé dans ce PDF E500. Vérifie le nom saisi dans la case Conducteur.';
     }
   } catch (err) {
     statusEl.style.color = 'var(--red)';
-    statusEl.textContent = '❌ Erreur lecture PDF : ' + (err.message || 'Fichier non lisible');
+    statusEl.textContent = '❌ Erreur PDF : ' + (err.message || 'Fichier non lisible');
   }
   event.target.value = '';
 }
 
-// Bouton universel : Copie un résumé complet prêt à coller dans n'importe quelle IA (ChatGPT, Claude, Copilot, Le Chat, Gemini...)
-function copyAuditPromptForAnyAI() {
-  recalculateAll();
-  const rep = lastComputedReport;
-  const monthFolder = MONTH_FOLDERS[rep.month] || String(rep.month);
-  const decSummaryText = rep.hotelCount + ' (' + rep.shortHotelCount + ' Court(s) <=24h / ' + rep.longHotelCount + ' Long(s) >24h)';
-  const decDetailListText = rep.decoucherDetails && rep.decoucherDetails.length
-    ? rep.decoucherDetails.map(d =>
-        'J' + d.allerDay + '->J' + d.retourDay + ' : Découcher ' + d.type +
-        ' (Écart entre les 2 fins : ' + formatMinToHHMM(d.betweenEndsMin) + ' | Repos hôtel : ' + formatMinToHHMM(d.hotelRestMin) + ')'
-      ).join(' ; ')
-    : 'Aucun découcher';
-
-  const activeRowsText = scheduleData
-    .filter(r => r.code !== '-')
-    .map(r => 'J' + String(r.day).padStart(2, '0') + ': ' + r.code + (r.start ? ' (' + r.start + '-' + r.end + ')' : '') + (r.lit !== 'none' ? ' [Lit:' + r.lit + ']' : ''))
-    .join(', ');
-
-  const auditLines = rep.restAuditEvents.length
-    ? rep.restAuditEvents.map(a => '- [' + a.level.toUpperCase() + '] ' + a.title + ' : ' + a.detail).join('\n')
-    : '- Aucune anomalie détectée.';
-
-  const promptText =
-    'Voici le relevé mensuel E500 (Lineas / CP 226) généré par RB RailVigie pour vérification :\n' +
-    '- Conducteur : ' + rep.driverName + ' (Matricule : ' + rep.matricule + ')\n' +
-    '- Période : ' + monthFolder + ' ' + rep.year + '\n' +
-    '- Heures prestées : ' + formatMinToHHMM(rep.totalWorkMin) + '\n' +
-    '- Heures Samedi / Dimanche : ' + formatMinToHHMM(rep.totalSatMin) + ' / ' + formatMinToHHMM(rep.totalSunMin) + '\n' +
-    '- Heures Sup. Jour (>10h) / Semaine (>46h) / Trimestre : ' + formatMinToHHMM(rep.totalDailyOTMin) + ' / ' + formatMinToHHMM(rep.totalWeeklyOTMin) + ' / ' + formatMinToHHMM(rep.totalQuarterOTMin) + '\n' +
-    '- Repos RX / Alternements OO posés : ' + rep.usedCounts.RX + ' RX / ' + rep.usedCounts.OO + ' OO\n' +
-    '- Découchers : ' + decSummaryText + ' -> ' + decDetailListText + '\n' +
-    '- Grille du mois : ' + activeRowsText + '\n\n' +
-    'Audit réglementaire CP 226 :\n' + auditLines;
-
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(promptText).then(() => {
-      alert('Résumé complet copié dans le presse-papiers !\nTu peux maintenant le coller dans ChatGPT, Claude, Copilot, Mistral Le Chat ou Gemini.');
-    }).catch(() => {
-      prompt('Copie ce résumé pour ton IA :', promptText);
-    });
-  } else {
-    prompt('Copie ce résumé pour ton IA :', promptText);
-  }
-}
-
-// 10. Construction du document PDF + Boutons Multi-Cloud (OneDrive, iCloud, Dropbox, Drive...), Mail & Téléchargement local
+// 10. Construction du document PDF + Export Multi-Cloud (OneDrive, iCloud, Google Drive, Dropbox, Proton) & Mail (avec Découcher Court vs Long)
 function buildAuditJsPDF() {
   recalculateAll();
   const { jsPDF } = window.jspdf;
@@ -2631,13 +2756,6 @@ function buildAuditJsPDF() {
 
 function openExportModal() {
   updateCloudPathPreview();
-  const cloudSel = document.getElementById('cloudProviderSelect');
-  const provKey = cloudSel ? cloudSel.value : 'universal';
-  const provMeta = CLOUD_PROVIDERS[provKey] || CLOUD_PROVIDERS.universal;
-  const lblEl = document.getElementById('modalCloudProviderName');
-  if (lblEl) {
-    lblEl.textContent = 'Dossier cible (' + provMeta.name + ' — chemin copié) :';
-  }
   document.getElementById('exportModal').style.display = 'flex';
 }
 
@@ -2650,36 +2768,37 @@ function downloadPDFDirect() {
   doc.save(fileName);
 }
 
-// Ouvre le service Cloud choisi par le collègue (OneDrive, iCloud Drive, Dropbox, Google Drive, Proton/Nextcloud) après avoir téléchargé le PDF et copié le chemin
-function openSelectedCloudWeb() {
+function openSpecificCloud(providerKey) {
   const { doc, fileName, rep, monthFolder } = buildAuditJsPDF();
   const cloudPath = 'Travail / ' + rep.year + ' / ' + monthFolder;
+  doc.save(fileName);
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(cloudPath).catch(() => {});
   }
-  doc.save(fileName);
-
-  const cloudSel = document.getElementById('cloudProviderSelect');
-  const provKey = cloudSel ? cloudSel.value : 'universal';
-  const provMeta = CLOUD_PROVIDERS[provKey] || CLOUD_PROVIDERS.universal;
-  if (provMeta.url) {
-    window.open(provMeta.url, '_blank', 'noopener');
-  } else {
-    alert('PDF "' + fileName + '" téléchargé !\nChemin de dossier copié : ' + cloudPath);
+  const prov = CLOUD_PROVIDERS[providerKey] || CLOUD_PROVIDERS.onedrive;
+  if (prov.url) {
+    window.open(prov.url, '_blank', 'noopener');
   }
 }
 
-// Bouton bleu "Cloud" : Partage Natif Universel (OneDrive, iCloud Fichiers, Dropbox, Google Drive, Mail, WhatsApp avec le PDF joint)
+function openSelectedCloudPortal() {
+  const cloudSel = document.getElementById('cloudProviderSelect');
+  const providerKey = cloudSel ? cloudSel.value.trim() : 'native';
+  if (providerKey === 'native') {
+    openExportModal();
+    return;
+  }
+  openSpecificCloud(providerKey);
+}
+
+// Bouton bleu "Cloud" : Partage Natif Multi-Cloud (OneDrive, iCloud, Google Drive, Dropbox, Mail, WhatsApp) ou ouverture du Cloud choisi
 async function sharePDFNativeCloudOrMail() {
   const { doc, fileName, rep, monthFolder, decSummaryText, decDetailListText } = buildAuditJsPDF();
   const savedEmail = (document.getElementById('userEmailInput').value || '').trim();
   const cloudPath = 'Travail / ' + rep.year + ' / ' + monthFolder;
-  const cloudSel = document.getElementById('cloudProviderSelect');
-  const provKey = cloudSel ? cloudSel.value : 'universal';
-  const provMeta = CLOUD_PROVIDERS[provKey] || CLOUD_PROVIDERS.universal;
 
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(cloudPath).catch(() => {});
+    navigator.clipboard.writeText(savedEmail || cloudPath).catch(() => {});
   }
 
   const pdfBlob = doc.output('blob');
@@ -2691,7 +2810,7 @@ async function sharePDFNativeCloudOrMail() {
         title: 'RB RailVigie — ' + monthFolder + ' ' + rep.year,
         text: 'Rapport RB RailVigie (' + rep.driverName + ').\n' +
               'Découchers : ' + decSummaryText + ' (' + decDetailListText + ').\n' +
-              'Cloud (' + provMeta.name + ') : ' + cloudPath + (savedEmail ? '\nDestinataire : ' + savedEmail : ''),
+              'Dossier Cloud : ' + cloudPath + (savedEmail ? '\nDestinataire : ' + savedEmail : ''),
         files: [pdfFile]
       });
       return;

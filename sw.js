@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rb-railvigie-math-open';
+const CACHE_NAME = 'rb-railvigie-e500-direct';
 const ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (event) => {
