@@ -1988,7 +1988,7 @@ function recalculateAll() {
   };
 }
 
-// 9. Importation intelligente PDF E500 & Image (Filtrage strict Nom+Prénom + Double Vérification IA & Coordonnées)
+// 9. Importation intelligente PDF E500 & Image (Modèle gemini-3.8-flash prioritaire + Alignement Coordonnées & Vision)
 const COUNTER_KEYS_ORDER = ['RX', 'NMBS', 'REC', 'WKD', 'ZZ', 'ZB', 'BLH', 'BELH', 'BTH', 'BTULH'];
 
 function getDriverFilterTokens() {
@@ -2017,7 +2017,6 @@ function locateDriverAndHeaderOnPdfPage(tcItems, requiredTokens) {
   })).filter(it => it.str.length > 0);
 
   let driverY = null;
-  let driverX = null;
 
   for (let i = 0; i < items.length; i++) {
     const center = items[i];
@@ -2025,13 +2024,12 @@ function locateDriverAndHeaderOnPdfPage(tcItems, requiredTokens) {
     if (!center.norm.includes(surnameTok) && !center.norm.includes(requiredTokens[0])) continue;
 
     const nearbyText = items
-      .filter(other => Math.abs(other.y - center.y) <= 26 && Math.abs(other.x - center.x) <= 260)
+      .filter(other => Math.abs(other.y - center.y) <= 28 && Math.abs(other.x - center.x) <= 280)
       .map(other => other.norm)
       .join(' ');
 
     if (requiredTokens.every(tok => nearbyText.includes(tok))) {
       driverY = center.y;
-      driverX = center.x;
       break;
     }
   }
@@ -2040,33 +2038,31 @@ function locateDriverAndHeaderOnPdfPage(tcItems, requiredTokens) {
     return { found: false, yPdf: null, headerYPdf: null, structuredCoordText: '' };
   }
 
-  // Recherche de la ligne d'en-tête des colonnes (où apparaissent WKD, REC, ZB, BELH, ou la suite 1 2 3 4 5...)
+  // Recherche de la ligne d'en-tête des colonnes (où apparaissent WKD, REC, ZB, BELH, etc.)
   let headerY = null;
   for (let i = 0; i < items.length; i++) {
     const it = items[i];
-    if (it.y <= driverY) continue; // L'en-tête est au-dessus de la ligne du conducteur (Y plus grand en PDF)
+    if (it.y <= driverY) continue;
     if (['WKD', 'REC', 'BELH', 'BTULH', 'NMBS'].includes(it.norm)) {
       headerY = it.y;
       break;
     }
   }
 
-  // Construction d'un relevé géométrique exact (trié de gauche à droite par coordonnée X)
   let coordDump = '';
   if (headerY !== null) {
     const headerItems = items
       .filter(it => Math.abs(it.y - headerY) <= 24)
       .sort((a, b) => a.x - b.x);
-    coordDump += 'EN-TÊTE DES COLONNES (trié de gauche à droite avec coordonnée X) :\n';
+    coordDump += 'EN-TÊTE DES COLONNES DU PDF (trié de gauche à droite avec coordonnée X) :\n';
     coordDump += headerItems.map(it => '[X=' + it.x + '] "' + it.str + '"').join(' | ') + '\n\n';
   }
 
-  // Tous les éléments de la bande horizontale du conducteur (±22 pts autour de driverY), triés par X puis Y
   const rowItems = items
-    .filter(it => Math.abs(it.y - driverY) <= 22)
+    .filter(it => Math.abs(it.y - driverY) <= 24)
     .sort((a, b) => (a.x !== b.x ? a.x - b.x : b.y - a.y));
 
-  coordDump += 'ÉLÉMENTS EXACTS SUR LA LIGNE DU CONDUCTEUR (triés de gauche à droite par coordonnée X) :\n';
+  coordDump += 'TEXTES EXACTS SUR LA LIGNE DU CONDUCTEUR DANS LE PDF (triés de gauche à droite par coordonnée X) :\n';
   coordDump += rowItems.map(it => '[X=' + it.x + ', Y=' + it.y + '] "' + it.str + '"').join(' | ') + '\n';
 
   return {
@@ -2077,67 +2073,53 @@ function locateDriverAndHeaderOnPdfPage(tcItems, requiredTokens) {
   };
 }
 
-// Rendu haute définition de la page PDF + Image composite (En-tête des colonnes collé juste au-dessus de la ligne du conducteur)
+// Rendu optimisé de la page PDF en image JPEG (identique en taille/poids à une capture d'écran pour éviter tout blocage API)
 async function renderPdfPageAndCropForGemini(page, yPdfDriver, headerYPdf) {
-  const scale = 2.6;
+  const baseVp = page.getViewport({ scale: 1.0 });
+  const targetWidth = 2400;
+  const scale = Math.min(2.4, Math.max(1.4, targetWidth / (baseVp.width || 1000)));
   const viewport = page.getViewport({ scale: scale });
+
   const canvas = document.createElement('canvas');
-  canvas.width = viewport.width;
-  canvas.height = viewport.height;
+  canvas.width = Math.round(viewport.width);
+  canvas.height = Math.round(viewport.height);
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-  const fullPageB64 = canvas.toDataURL('image/jpeg', 0.90).split(',')[1];
+  const fullPageB64 = canvas.toDataURL('image/jpeg', 0.88).split(',')[1];
 
-  let croppedStripB64 = null;
   let compositeHeaderAndRowB64 = null;
 
   if (yPdfDriver !== null && yPdfDriver !== undefined) {
     const yCanvas = viewport.height - (yPdfDriver * scale);
-    const bandHalfHeight = Math.round(58 * scale);
+    const bandHalfHeight = Math.round(72 * scale);
     const sy = Math.max(0, Math.round(yCanvas - bandHalfHeight));
     const sh = Math.min(canvas.height - sy, bandHalfHeight * 2);
 
-    if (sh > 30) {
-      const stripCanvas = document.createElement('canvas');
-      stripCanvas.width = canvas.width;
-      stripCanvas.height = sh;
-      const sCtx = stripCanvas.getContext('2d');
-      sCtx.fillStyle = '#ffffff';
-      sCtx.fillRect(0, 0, stripCanvas.width, stripCanvas.height);
-      sCtx.drawImage(canvas, 0, sy, canvas.width, sh, 0, 0, canvas.width, sh);
-      croppedStripB64 = stripCanvas.toDataURL('image/jpeg', 0.94).split(',')[1];
+    const headerYCanvas = headerYPdf !== null
+      ? (viewport.height - (headerYPdf * scale))
+      : Math.round(viewport.height * 0.14);
+    const hSy = Math.max(0, Math.round(headerYCanvas - 50 * scale));
+    const hSh = Math.min(canvas.height - hSy, Math.round(100 * scale));
 
-      // Création d'une image composite : Bande d'en-tête du tableau + Ligne du conducteur alignées verticalement !
-      const headerYCanvas = headerYPdf !== null
-        ? (viewport.height - (headerYPdf * scale))
-        : Math.round(viewport.height * 0.14);
-      const hSy = Math.max(0, Math.round(headerYCanvas - 45 * scale));
-      const hSh = Math.min(canvas.height - hSy, Math.round(90 * scale));
-
-      if (hSh > 20) {
-        const compCanvas = document.createElement('canvas');
-        compCanvas.width = canvas.width;
-        compCanvas.height = hSh + sh + 6;
-        const cCtx = compCanvas.getContext('2d');
-        cCtx.fillStyle = '#ffffff';
-        cCtx.fillRect(0, 0, compCanvas.width, compCanvas.height);
-        // En haut : l'en-tête avec les titres des colonnes (RX, NMBS, REC, WKD, ZZ, ZB, BLH, BELH, BTH, BTULH, 1..31)
-        cCtx.drawImage(canvas, 0, hSy, canvas.width, hSh, 0, 0, canvas.width, hSh);
-        // Ligne de séparation repère
-        cCtx.fillStyle = '#f59e0b';
-        cCtx.fillRect(0, hSh, canvas.width, 6);
-        // Juste en dessous au même X : la ligne du conducteur !
-        cCtx.drawImage(canvas, 0, sy, canvas.width, sh, 0, hSh + 6, canvas.width, sh);
-        compositeHeaderAndRowB64 = compCanvas.toDataURL('image/jpeg', 0.94).split(',')[1];
-      }
+    if (sh > 30 && hSh > 20) {
+      const compCanvas = document.createElement('canvas');
+      compCanvas.width = canvas.width;
+      compCanvas.height = hSh + sh + 6;
+      const cCtx = compCanvas.getContext('2d');
+      cCtx.fillStyle = '#ffffff';
+      cCtx.fillRect(0, 0, compCanvas.width, compCanvas.height);
+      cCtx.drawImage(canvas, 0, hSy, canvas.width, hSh, 0, 0, canvas.width, hSh);
+      cCtx.fillStyle = '#f59e0b';
+      cCtx.fillRect(0, hSh, canvas.width, 6);
+      cCtx.drawImage(canvas, 0, sy, canvas.width, sh, 0, hSh + 6, canvas.width, sh);
+      compositeHeaderAndRowB64 = compCanvas.toDataURL('image/jpeg', 0.92).split(',')[1];
     }
   }
   return {
     fullPageB64: fullPageB64,
-    croppedStripB64: croppedStripB64,
     compositeHeaderAndRowB64: compositeHeaderAndRowB64
   };
 }
@@ -2161,7 +2143,6 @@ function extractDriverSectionFromPdfPages(pagesLines, requiredTokens) {
   return matchedBlocks.join('\n\n');
 }
 
-// Préparation haute définition de l'image (jusqu'à 3200px de large pour garder une netteté parfaite sur les 45 colonnes)
 function compressImageFileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -2171,7 +2152,7 @@ function compressImageFileToBase64(file) {
       const img = new Image();
       img.onload = function() {
         try {
-          const maxDim = 3200;
+          const maxDim = 2800;
           let w = img.width || 1600;
           let h = img.height || 600;
           if (w > maxDim || h > maxDim) {
@@ -2190,7 +2171,7 @@ function compressImageFileToBase64(file) {
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(0, 0, w, h);
           ctx.drawImage(img, 0, 0, w, h);
-          const jpegUrl = canvas.toDataURL('image/jpeg', 0.94);
+          const jpegUrl = canvas.toDataURL('image/jpeg', 0.92);
           resolve({
             base64Data: jpegUrl.split(',')[1],
             mimeType: 'image/jpeg'
@@ -2214,8 +2195,9 @@ function compressImageFileToBase64(file) {
   });
 }
 
+// Sélection intelligente des modèles Gemini : place gemini-3.8-flash et la génération 3.x en tête absolue
 async function getAvailableGeminiModels(cleanKey) {
-  const defaultModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash-lite'];
+  const defaultModels = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.0-flash', 'gemini-2.5-flash'];
   try {
     const listUrl = 'https://generativelanguage.googleapis.com/v1beta/models?key=' + encodeURIComponent(cleanKey);
     const resp = await fetch(listUrl);
@@ -2238,24 +2220,28 @@ async function getAvailableGeminiModels(cleanKey) {
       })
       .map(m => m.name.replace(/^models\//, ''));
 
-    if (candidates.length === 0) return defaultModels;
+    if (!candidates.includes('gemini-3.8-flash')) {
+      candidates.unshift('gemini-3.8-flash');
+    }
 
     function scoreModel(id) {
       const s = id.toLowerCase();
-      if (s === 'gemini-2.5-flash') return 100;
-      if (s === 'gemini-2.5-pro') return 98;
-      if (s === 'gemini-2.0-flash') return 95;
-      if (s.startsWith('gemini-2.5-flash') && !s.includes('lite')) return 90;
-      if (s.startsWith('gemini-3') && s.includes('flash')) return 88;
-      if (s.startsWith('gemini-2.0-flash') && !s.includes('lite')) return 85;
-      if (s.includes('flash') && !s.includes('lite') && !s.includes('8b')) return 80;
-      if (s.includes('flash')) return 70;
-      if (s.includes('pro')) return 60;
-      return 50;
+      // Priorité absolue aux modèles Gemini 3.8 et 3.x (les modèles 2.5 et 2.0 sont désactivés pour les nouveaux comptes)
+      if (s === 'gemini-3.8-flash') return 300;
+      if (s.startsWith('gemini-3.8-flash') && !s.includes('lite')) return 290;
+      if (s.startsWith('gemini-3.8')) return 280;
+      if (s.startsWith('gemini-3') && s.includes('flash') && !s.includes('lite')) return 260;
+      if (s.startsWith('gemini-3') && s.includes('pro')) return 250;
+      if (s.startsWith('gemini-3')) return 240;
+      // Modèles plus anciens uniquement en dernier recours tout en bas de la liste
+      if (s.includes('flash') && !s.includes('lite')) return 50;
+      if (s.includes('flash')) return 40;
+      return 20;
     }
 
     candidates.sort((a, b) => scoreModel(b) - scoreModel(a));
-    return candidates.slice(0, 5);
+    // Dédoublonnage tout en gardant les 8 meilleurs candidats
+    return Array.from(new Set(candidates)).slice(0, 8);
   } catch (err) {
     if (/API_KEY_INVALID|key not valid|API key not valid|permission/i.test(err.message || '')) {
       throw new Error('Clé API Gemini invalide ou non autorisée (' + err.message + ').');
@@ -2264,16 +2250,24 @@ async function getAvailableGeminiModels(cleanKey) {
   }
 }
 
+async function sleepMs(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
 async function callGeminiWithFallback(parts, apiKey) {
   const cleanKey = apiKey.replace(/["'\s]/g, '');
   const models = await getAvailableGeminiModels(cleanKey);
   const errors = [];
+  const triedModels = new Set();
 
   for (let m = 0; m < models.length; m++) {
     const modelName = models[m];
+    if (triedModels.has(modelName)) continue;
+    triedModels.add(modelName);
+
     try {
       const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + encodeURIComponent(cleanKey);
-      const resp = await fetch(url, {
+      let resp = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2281,6 +2275,20 @@ async function callGeminiWithFallback(parts, apiKey) {
           generationConfig: { temperature: 0.0 }
         })
       });
+
+      // Si limite de fréquence temporaire (429), on attend 2 secondes et on réessaie ce même modèle
+      if (resp.status === 429) {
+        await sleepMs(2200);
+        resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: parts }],
+            generationConfig: { temperature: 0.0 }
+          })
+        });
+      }
+
       const json = await resp.json();
 
       if (!resp.ok || json.error) {
@@ -2288,7 +2296,12 @@ async function callGeminiWithFallback(parts, apiKey) {
         if (resp.status === 400 && /API_KEY_INVALID|key not valid/i.test(errMsg)) {
           throw new Error('Clé API Gemini invalide : vérifie qu\'il n\'y a pas d\'espace.');
         }
-        errors.push(modelName + ': ' + errMsg);
+        // Si Google indique explicitement un nouveau modèle à utiliser (ex: "use models/gemini-3.8-flash"), on l'ajoute immédiatement en tête !
+        const suggestedMatch = errMsg.match(/use models\/([a-zA-Z0-9._-]+)/i);
+        if (suggestedMatch && suggestedMatch[1] && !triedModels.has(suggestedMatch[1])) {
+          models.splice(m + 1, 0, suggestedMatch[1]);
+        }
+        errors.push({ model: modelName, msg: errMsg });
         continue;
       }
 
@@ -2296,7 +2309,7 @@ async function callGeminiWithFallback(parts, apiKey) {
       const rawText = candidate && candidate.content && candidate.content.parts && candidate.content.parts.map(p => p.text || '').join('\n');
 
       if (!rawText) {
-        errors.push(modelName + ': Réponse vide');
+        errors.push({ model: modelName, msg: 'Réponse vide' });
         continue;
       }
 
@@ -2304,7 +2317,7 @@ async function callGeminiWithFallback(parts, apiKey) {
       const jsonMatch = cleanJson.match(/\{[\s\S]*\}/) || cleanJson.match(/\[[\s\S]*\]/);
 
       if (!jsonMatch) {
-        errors.push(modelName + ': Format JSON introuvable');
+        errors.push({ model: modelName, msg: 'Format JSON introuvable' });
         continue;
       }
 
@@ -2312,32 +2325,36 @@ async function callGeminiWithFallback(parts, apiKey) {
     } catch (err) {
       const msg = err.message || String(err);
       if (/Clé API Gemini invalide/i.test(msg)) throw err;
-      errors.push(modelName + ': ' + msg);
+      errors.push({ model: modelName, msg: msg });
     }
   }
-  const non404 = errors.find(e => !/not found|404/i.test(e));
-  throw new Error(non404 || errors[0] || 'Aucun modèle Gemini disponible pour cette clé.');
+
+  // En cas d'échec global, on affiche l'erreur du modèle actif (ex: gemini-3.8-flash) et non celle d'un ancien modèle déprécié
+  const relevantError = errors.find(e => !/no longer available|not found|404/i.test(e.msg)) || errors[0];
+  throw new Error(relevantError ? (relevantError.model + ': ' + relevantError.msg) : 'Aucun modèle Gemini disponible.');
 }
 
-// Instructions anatomiques strictes d'une ligne E500 Lineas / SIBELIT
+// Prompt expert à double contrôle intégré en 1 seul appel (évite le blocage de quota tout en garantissant l'auto-vérification)
 function getE500StrictRulesPrompt(targetName, firstNameToken) {
   return 'Tu es un auditeur expert en plannings ferroviaires Lineas / SIBELIT (grille mensuelle E500).\n' +
     'RÈGLE D\'IDENTITÉ STRICTE (ANTI-HOMONYME) :\n' +
     '- Il existe deux conducteurs nommés "BRASSEUR". Tu dois extraire EXCLUSIVEMENT la ligne qui correspond à la fois au nom ET au prénom : "' + targetName + '" (ex: "Rémy Marcel L BRASSEUR"). Ignore tout autre "BRASSEUR" n\'ayant pas le prénom "' + firstNameToken + '".\n' +
     '- Si l\'image fournie montre uniquement une seule ligne d\'horaire découpée, traite cette ligne.\n\n' +
-    'RÈGLE CRITIQUE SUR LES 10 COMPTEURS (ORDRE STRICT DE GAUCHE À DROITE) :\n' +
+    'PROTOCOLE DE DOUBLE VÉRIFICATION DES 10 COMPTEURS (ORDRE STRICT DE GAUCHE À DROITE) :\n' +
     'Sur une feuille E500, immédiatement après le nom/matricule et AVANT le jour 1 du mois, il y a EXACTEMENT 10 colonnes de compteurs dans cet ordre immuable de gauche à droite :\n' +
-    '  1. RX    (Jours de repos périodiques — ex: 118)\n' +
-    '  2. NMBS  (Congés SNCB — souvent 0)\n' +
-    '  3. REC   (Heures de récupération — nombre souvent décimal, ex: 27.2)\n' +
-    '  4. WKD   (Repos de week-end — situé EN 4e POSITION, JUSTE À DROITE DE REC ! Ex: 4)\n' +
-    '  5. ZZ    (Jours de maladie — situé EN 5e POSITION, ENTRE WKD ET ZB ! Ex: 0)\n' +
-    '  6. ZB    (Congé sans solde 45+ — situé EN 6e POSITION, JUSTE APRÈS ZZ ! Ex: 10)\n' +
-    '  7. BLH   (Solde congés légaux — situé en 7e position)\n' +
-    '  8. BELH  (Solde congés extralégaux — situé en 8e position, souvent décimal, ex: 6.5)\n' +
-    '  9. BTH   (Congés reportés N-1 — situé en 9e position)\n' +
-    '  10. BTULH (Congés légaux non rémunérés — situé en 10e position)\n' +
-    '⚠️ ATTENTION EXTRÊME : Ne décale JAMAIS les colonnes ! Ne confonds JAMAIS la colonne 4 (WKD, juste après REC) avec la colonne 5 (ZZ, juste avant ZB). Lis d\'abord les 10 valeurs dans l\'ordre exact de gauche à droite dans le tableau "countersLeftToRight" de 10 éléments, puis remplis l\'objet "counters". Utilise le point "." pour les décimales.\n\n' +
+    '  Position 1 : RX    (Jours de repos périodiques — ex: 118)\n' +
+    '  Position 2 : NMBS  (Congés SNCB — souvent 0)\n' +
+    '  Position 3 : REC   (Heures de récupération — nombre souvent décimal, ex: 27.2)\n' +
+    '  Position 4 : WKD   (Repos de week-end — situé EN 4e POSITION, IMMÉDIATEMENT À DROITE DE REC ! Ex: 4)\n' +
+    '  Position 5 : ZZ    (Jours de maladie — situé EN 5e POSITION, ENTRE WKD ET ZB ! Ex: 0)\n' +
+    '  Position 6 : ZB    (Congé sans solde 45+ — situé EN 6e POSITION, IMMÉDIATEMENT À DROITE DE ZZ ! Ex: 10)\n' +
+    '  Position 7 : BLH   (Solde congés légaux — situé en 7e position)\n' +
+    '  Position 8 : BELH  (Solde congés extralégaux — situé en 8e position, souvent décimal, ex: 6.5)\n' +
+    '  Position 9 : BTH   (Congés reportés N-1 — situé en 9e position)\n' +
+    '  Position 10 : BTULH (Congés légaux non rémunérés — situé en 10e position)\n' +
+    '⚠️ VÉRIFICATION OBLIGATOIRE DES COMPTEURS :\n' +
+    '- Étape A : Lis les 10 nombres de gauche à droite et inscris-les dans "countersLeftToRight" (tableau de 10 nombres).\n' +
+    '- Étape B : Vérifie que le 3e nombre est bien REC (ex: 27.2), que le 4e nombre juste à sa droite est bien WKD (ex: 4), que le 5e nombre est bien ZZ (ex: 0) et que le 6e nombre est bien ZB (ex: 10). Ne décale JAMAIS WKD dans ZZ !\n\n' +
     'RÈGLE SUR LES 31 JOURS DU MOIS (COLONNES 1 À 31 DE GAUCHE À DROITE) :\n' +
     '- Chaque colonne de jour (1 à 31) contient :\n' +
     '  * Soit une prestation active avec heure de début en haut et heure de fin en bas (ex: 13:00 et 22:35) -> mets "code":"BVTS", "start":"HH:MM", "end":"HH:MM".\n' +
@@ -2347,41 +2364,11 @@ function getE500StrictRulesPrompt(targetName, firstNameToken) {
     '{\n' +
     '  "fullName": "Rémy Marcel L BRASSEUR",\n' +
     '  "matricule": "899008349",\n' +
+    '  "auditCheck": "Vérification effectuée : pos3 REC=..., pos4 WKD=..., pos5 ZZ=..., pos6 ZB=...",\n' +
     '  "countersLeftToRight": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],\n' +
     '  "counters": {"RX":0, "NMBS":0, "REC":0, "WKD":0, "ZZ":0, "ZB":0, "BLH":0, "BELH":0, "BTH":0, "BTULH":0},\n' +
     '  "days": [{"day":1, "code":"BVTS", "start":"13:00", "end":"22:35", "lit":"none", "trajetMin":0}]\n' +
     '}';
-}
-
-// Passe 2 : Contre-vérification minutieuse (Auto-Audit cellule par cellule)
-async function verifyAndRefineExtraction(initialData, visualParts, coordText, apiKey, requiredTokens) {
-  try {
-    const targetName = requiredTokens.join(' ');
-    const auditPrompt = 'Tu es le contrôleur de vérification finale (Passe 2/2) pour le planning E500 de "' + targetName + '".\n' +
-      'Voici le JSON extrait lors de la Passe 1 :\n' +
-      JSON.stringify(initialData) + '\n\n' +
-      'TA MISSION DE VÉRIFICATION SCRUPULEUSE :\n' +
-      '1. Vérifie les 10 compteurs de gauche à droite : [1:RX, 2:NMBS, 3:REC, 4:WKD, 5:ZZ, 6:ZB, 7:BLH, 8:BELH, 9:BTH, 10:BTULH].\n' +
-      '   - Regarde attentivement les nombres situés entre RX (1er compteur) et BELH (8e compteur).\n' +
-      '   - Juste après REC (3e compteur), la 4e colonne est WKD. La 5e colonne est ZZ. La 6e colonne est ZB.\n' +
-      '   - Si la Passe 1 a mis la valeur de WKD dans ZZ (ou inversement), CORRIGE-LE IMMÉDIATEMENT !\n' +
-      '   - Vérifie que REC et BELH ont bien leurs décimales exactes (ex: 27.2, 6.5).\n' +
-      '2. Vérifie chaque jour de 1 à 31 :\n' +
-      '   - Vérifie qu\'aucun jour n\'est décalé d\'une colonne.\n' +
-      '   - Vérifie que chaque "00" est bien codé "OO", chaque "RX" est bien "RX", et que les heures de début et de fin de chaque prestation (BVTS) ainsi que les lits ("aller" puis "retour") sont exacts.\n' +
-      (coordText ? ('\nDonnées géométriques de contrôle extraites du PDF :\n' + coordText.slice(0, 10000) + '\n') : '') +
-      '\nRenvoie UNIQUEMENT le JSON final corrigé et vérifié (même structure exacte).';
-
-    const parts = [{ text: auditPrompt }].concat(visualParts);
-    const verified = await callGeminiWithFallback(parts, apiKey);
-    if (verified && (verified.days || verified.counters)) {
-      return verified;
-    }
-    return initialData;
-  } catch (e) {
-    // Si la passe 2 rencontre une limite réseau, on conserve la passe 1
-    return initialData;
-  }
 }
 
 function sanitizeCounterNumber(val) {
@@ -2409,22 +2396,22 @@ function applyExtractedJsonToSchedule(data, requiredTokens) {
     document.getElementById('driverMatricule').value = String(obj.matricule).trim();
   }
 
-  // Si l'IA a fourni le tableau ordonné des 10 compteurs de gauche à droite, on l'utilise en priorité pour éviter toute confusion de clé
-  if (Array.isArray(obj.countersLeftToRight) && obj.countersLeftToRight.length === 10) {
-    COUNTER_KEYS_ORDER.forEach((key, idx) => {
-      const cleanVal = sanitizeCounterNumber(obj.countersLeftToRight[idx]);
-      if (cleanVal !== null) {
-        const el = document.getElementById('cnt_' + key);
-        if (el) el.value = cleanVal;
-      }
-    });
-  }
-
   if (obj.counters && typeof obj.counters === 'object') {
     COUNTER_KEYS_ORDER.forEach(k => {
       const cleanVal = sanitizeCounterNumber(obj.counters[k]);
       if (cleanVal !== null) {
         const el = document.getElementById('cnt_' + k);
+        if (el) el.value = cleanVal;
+      }
+    });
+  }
+
+  // Application prioritaire du tableau ordonné de gauche à droite [RX, NMBS, REC, WKD, ZZ, ZB, BLH, BELH, BTH, BTULH]
+  if (Array.isArray(obj.countersLeftToRight) && obj.countersLeftToRight.length === 10) {
+    COUNTER_KEYS_ORDER.forEach((key, idx) => {
+      const cleanVal = sanitizeCounterNumber(obj.countersLeftToRight[idx]);
+      if (cleanVal !== null) {
+        const el = document.getElementById('cnt_' + key);
         if (el) el.value = cleanVal;
       }
     });
@@ -2462,47 +2449,35 @@ function applyExtractedJsonToSchedule(data, requiredTokens) {
   return false;
 }
 
-async function parseScheduleWithGeminiPdfVision(rendered, extractedText, coordText, apiKey, requiredTokens, statusEl) {
+async function parseScheduleWithGeminiPdfVision(rendered, extractedText, coordText, apiKey, requiredTokens) {
   const targetName = requiredTokens.join(' ');
   const prompt = getE500StrictRulesPrompt(targetName, requiredTokens[0]) +
-    '\n\nDONNÉES GÉOMÉTRIQUES ET TEXTUELLES EXTRAITES DU PDF :\n' +
+    '\n\nDONNÉES GÉOMÉTRIQUES ET TEXTUELLES EXTRAITES DU PDF (POUR VÉRIFICATION CROISÉE AVEC L\'IMAGE) :\n' +
     (coordText ? (coordText + '\n') : '') +
-    (extractedText || '').slice(0, 10000);
+    (extractedText || '').slice(0, 9000);
 
-  const visualParts = [];
+  const parts = [{ text: prompt }];
+  // On envoie l'image composite (En-tête + Ligne alignés) si disponible, sinon la page complète optimisée
   if (rendered.compositeHeaderAndRowB64) {
-    visualParts.push({ inline_data: { mime_type: 'image/jpeg', data: rendered.compositeHeaderAndRowB64 } });
-  }
-  if (rendered.croppedStripB64) {
-    visualParts.push({ inline_data: { mime_type: 'image/jpeg', data: rendered.croppedStripB64 } });
-  }
-  if (rendered.fullPageB64) {
-    visualParts.push({ inline_data: { mime_type: 'image/jpeg', data: rendered.fullPageB64 } });
+    parts.push({ inline_data: { mime_type: 'image/jpeg', data: rendered.compositeHeaderAndRowB64 } });
+  } else if (rendered.fullPageB64) {
+    parts.push({ inline_data: { mime_type: 'image/jpeg', data: rendered.fullPageB64 } });
   }
 
-  const pass1Parts = [{ text: prompt }].concat(visualParts);
-  const pass1Data = await callGeminiWithFallback(pass1Parts, apiKey);
-
-  if (statusEl) {
-    statusEl.textContent = '🔍 Passe 2/2 : Contre-vérification minutieuse des 10 compteurs et des 31 jours...';
-  }
-  const finalData = await verifyAndRefineExtraction(pass1Data, visualParts, coordText, apiKey, requiredTokens);
-  return applyExtractedJsonToSchedule(finalData, requiredTokens);
+  const parsed = await callGeminiWithFallback(parts, apiKey);
+  return applyExtractedJsonToSchedule(parsed, requiredTokens);
 }
 
-async function parseScheduleWithGeminiImage(base64Data, mimeType, apiKey, requiredTokens, statusEl) {
+async function parseScheduleWithGeminiImage(base64Data, mimeType, apiKey, requiredTokens) {
   const targetName = requiredTokens.join(' ');
   const prompt = getE500StrictRulesPrompt(targetName, requiredTokens[0]);
-  const visualParts = [{ inline_data: { mime_type: mimeType, data: base64Data } }];
+  const parts = [
+    { text: prompt },
+    { inline_data: { mime_type: mimeType, data: base64Data } }
+  ];
 
-  const pass1Parts = [{ text: prompt }].concat(visualParts);
-  const pass1Data = await callGeminiWithFallback(pass1Parts, apiKey);
-
-  if (statusEl) {
-    statusEl.textContent = '🔍 Passe 2/2 : Contre-vérification minutieuse des 10 compteurs et des 31 jours...';
-  }
-  const finalData = await verifyAndRefineExtraction(pass1Data, visualParts, '', apiKey, requiredTokens);
-  return applyExtractedJsonToSchedule(finalData, requiredTokens);
+  const parsed = await callGeminiWithFallback(parts, apiKey);
+  return applyExtractedJsonToSchedule(parsed, requiredTokens);
 }
 
 async function handleScheduleFileImport(event) {
@@ -2517,7 +2492,7 @@ async function handleScheduleFileImport(event) {
   const targetLabel = requiredTokens.join(' ');
 
   statusEl.style.color = 'var(--accent)';
-  statusEl.textContent = '⏳ Passe 1/2 : Analyse haute précision de "' + file.name + '" (' + targetLabel + ')...';
+  statusEl.textContent = '⏳ Analyse haute précision de "' + file.name + '" (' + targetLabel + ')...';
 
   if (isPdf) {
     try {
@@ -2563,16 +2538,16 @@ async function handleScheduleFileImport(event) {
 
       if (apiKey) {
         const pageToRender = matchedPageObj || (await pdf.getPage(1));
-        statusEl.textContent = '⏳ Passe 1/2 : Découpage En-tête + Ligne "' + targetLabel + '" et lecture Vision IA...';
+        statusEl.textContent = '⏳ Découpage En-tête + Ligne "' + targetLabel + '" et lecture Gemini 3.8...';
         try {
           const rendered = await renderPdfPageAndCropForGemini(pageToRender, matchedY, matchedHeaderY);
-          const textForAi = filteredText ? filteredText : fullText.slice(0, 18000);
+          const textForAi = filteredText ? filteredText : fullText.slice(0, 15000);
           const parsedByAi = await parseScheduleWithGeminiPdfVision(
-            rendered, textForAi, matchedCoordText, apiKey, requiredTokens, statusEl
+            rendered, textForAi, matchedCoordText, apiKey, requiredTokens
           );
           if (parsedByAi) {
             statusEl.style.color = 'var(--green)';
-            statusEl.textContent = '✓ PDF E500 importé et vérifié (2 passes) pour ' + targetLabel + ' !';
+            statusEl.textContent = '✓ PDF E500 importé et vérifié avec succès pour ' + targetLabel + ' !';
             saveStateToLocal(true);
             switchTab(4);
             event.target.value = '';
@@ -2614,12 +2589,12 @@ async function handleScheduleFileImport(event) {
       return;
     }
     try {
-      statusEl.textContent = '⏳ Passe 1/2 : Lecture haute définition de l\'image pour ' + targetLabel + '...';
+      statusEl.textContent = '⏳ Lecture haute précision de l\'image pour ' + targetLabel + '...';
       const imgObj = await compressImageFileToBase64(file);
-      const ok = await parseScheduleWithGeminiImage(imgObj.base64Data, imgObj.mimeType, apiKey, requiredTokens, statusEl);
+      const ok = await parseScheduleWithGeminiImage(imgObj.base64Data, imgObj.mimeType, apiKey, requiredTokens);
       if (ok) {
         statusEl.style.color = 'var(--green)';
-        statusEl.textContent = '✓ Image importée et vérifiée (2 passes) avec succès !';
+        statusEl.textContent = '✓ Image importée et vérifiée avec succès !';
         saveStateToLocal(true);
         switchTab(4);
       } else {
